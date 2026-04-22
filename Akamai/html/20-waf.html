@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Akamai · WAF Security Configuration 89613 v145</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./assets/style.css" />
+</head>
+<body>
+<nav class="topnav">
+  <div class="brand"><span class="dot">●</span> Akamai · beautyforever.com</div>
+  <div class="nav-links">
+    <a href="./index.html">Home</a>
+    <a href="./00-account.html">00 Account</a>
+    <a href="./10-property-essl.html">10 Property eSSL</a>
+    <a href="./11-property-api.html">11 Property API</a>
+    <a href="./20-waf.html" class="active">20 WAF</a>
+    <a href="./30-domain-www.html">30 Domain www</a>
+    <a href="./31-domain-m.html">31 Domain m</a>
+    <a href="./32-domain-api.html">32 Domain api</a>
+    <a href="./40-ops-verification.html">40 Ops Verification</a>
+    <a href="./90-dynamic-static.html">90 Dynamic/Static</a>
+    <a href="./99-queries.html">99 Queries</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="hero-inner">
+    <span class="hero-badge">Module 20 · Security Configuration 89613 v145</span>
+    <h1>WAF · <span class="accent">Security Configuration</span> 89613 v145</h1>
+    <p class="subtitle">
+      账号下唯一的一份 WAF 配置。3 条 Security Policies（Deny / Alert / Api）× 3 条 Match Targets
+      对应 beautyforever + unice + nadula + juliahair 四品牌的 www/m/api/tapi 全家桶。
+      2026-04-21 当天激活新增对 ASN <code>202425</code> + <code>www.beautyforever.com</code> 的拦截规则。
+    </p>
+    <div class="meta">
+      <span><strong>Config ID</strong> 89613</span>
+      <span><strong>Version</strong> 145 (prod + staging)</span>
+      <span><strong>Policies</strong> 3</span>
+      <span><strong>Match Targets</strong> 3</span>
+      <span><strong>targetProduct</strong> WAP_AAG</span>
+      <span><strong>激活</strong> 2026-04-21 06:10:22 UTC</span>
+    </div>
+  </div>
+</header>
+
+<main class="container">
+
+  <div style="background: var(--warn-dim); border: 1px solid var(--warn); border-radius: 8px; padding: 16px 20px; margin-bottom: 28px;">
+    <div style="color: var(--warn); font-weight: 700; font-size: var(--heading-size); margin-bottom: 8px;">⚠ 2026-04-21 Live Audit · 两处需纠正</div>
+    <div style="color: var(--text-primary); font-size: var(--body-size); line-height: 1.6;">
+      <strong>① Network List <code>146351_SECURITYBYPASSLIST</code> 实际为空</strong> ——
+      <code>elementCount=0</code>、<code>list=null</code>、最后更新 2023-02-16。
+      是 Akamai 默认创建的空 bypass list，<em>没有任何白名单 IP 生效</em>，迁移 AWS WAF 时无需准备对象。
+      <br>
+      <strong>② ASN 202425 拦截规则定位</strong> —— Custom Rule id <code>60383229</code>，
+      conditions = <code>hostMatch(www.beautyforever.com)</code> <strong>AND</strong> <code>asNumberMatch(202425, useXForwardForHeaders=false)</code>，
+      operation=AND、tag=<code>["as-number"]</code>、ruleActivated=true；挂在 Custom Rules 而非 Network List / Penalty Box。
+    </div>
+  </div>
+
+  <div class="toc">
+    <h3>Table of Contents</h3>
+    <ul>
+      <li><a href="#basic">§1 基本信息</a></li>
+      <li><a href="#today">2026-04-21 ASN 202425 新增拦截</a></li>
+      <li><a href="#policies">§2 Security Policies（3 条）</a></li>
+      <li><a href="#match-targets">§3 Match Targets（3 条）</a></li>
+      <li><a href="#bypass">Bypass Network List · 146351_SECURITYBYPASSLIST</a></li>
+      <li><a href="#controls">§4 启用的安全控件</a></li>
+      <li><a href="#coverage">§5 Hostname Coverage 汇总</a></li>
+      <li><a href="#uncovered">未受 WAF 保护（not covered）</a></li>
+      <li><a href="#deep">§6 值得深挖</a></li>
+    </ul>
+  </div>
+
+  <!-- ======================================================= -->
+  <!-- §1 基本信息 -->
+  <!-- ======================================================= -->
+  <section id="basic">
+    <h2>§1 基本信息</h2>
+    <p class="section-intro">
+      原始 JSON：
+      <code>../raw/waf_version.json</code> ·
+      <code>../raw/waf_policies.json</code> ·
+      <code>../raw/waf_match_targets.json</code> ·
+      <code>../raw/waf_hostname_coverage.json</code>
+    </p>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">WAF-META</span> Security Configuration 元数据</div>
+        <span class="badge info">唯一 config</span>
+      </div>
+      <div class="rule-body">
+        <p><strong>全账号只有这 1 个 Security Configuration</strong>——<code>Security Configuration</code>（id <code>89613</code>）。当前生产与 staging 同版本 v145，基于 v143。</p>
+        <table class="tbl">
+          <thead><tr><th>字段</th><th>值</th></tr></thead>
+          <tbody>
+            <tr><td>名称</td><td><code>Security Configuration</code>（全账号唯一）</td></tr>
+            <tr><td>Config ID</td><td><strong>89613</strong></td></tr>
+            <tr><td>Production Version</td><td><strong>145</strong></td></tr>
+            <tr><td>Staging Version</td><td>145</td></tr>
+            <tr><td>File Type</td><td><code>RBAC</code></td></tr>
+            <tr><td>targetProduct</td><td><code>WAP_AAG</code>（Web App Protector Advanced Application Gateway）</td></tr>
+            <tr><td>basedOn</td><td>v143</td></tr>
+            <tr><td>生产激活时间</td><td><strong>2026-04-21 06:10:22 UTC</strong></td></tr>
+            <tr><td>Staging 激活时间</td><td>2026-04-21 01:42:06 UTC</td></tr>
+            <tr><td>创建者</td><td><code>weina.shi@jinmuinfo.com</code></td></tr>
+            <tr><td>版本备注</td><td><strong>「加一个拦截规则，asn 为 202425，并且请求域名为 www.beautyforever.com 的，直接拦截掉」</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="today" class="callout warn">
+      <span class="badge pending">今日新增</span>
+      <strong>当天生产变更（2026-04-21）</strong> —— v145 于当天才激活到生产。版本备注原文：
+      <em>「加一个拦截规则，asn 为 <code>202425</code>，并且请求域名为 <code>www.beautyforever.com</code> 的，直接拦截掉」</em>。
+      <ul>
+        <li>新增维度：<strong>ASN 202425</strong> —— 已定位为 <strong>Custom Rule id <code>60383229</code></strong>，conditions = <code>hostMatch(www.beautyforever.com)</code> <strong>AND</strong> <code>asNumberMatch(202425)</code>（operation=AND，双正向匹配，tag=<code>["as-number"]</code>）</li>
+        <li>影响域名：<code>www.beautyforever.com</code></li>
+        <li>生产激活：<strong>2026-04-21 06:10:22 UTC</strong>（Staging 先行 ~04:28，生产当日落地）</li>
+        <li>创建者：<code>weina.shi@jinmuinfo.com</code></li>
+      </ul>
+      <p><strong>迁移提示：</strong> AWS WAF 侧用 <code>ASNMatchStatement</code>（asn_list = [202425]）+ <code>byte_match_statement</code>（host = www.beautyforever.com）组合即可 1:1 复刻。</p>
+    </div>
+  </section>
+
+  <!-- ======================================================= -->
+  <!-- §2 Policies -->
+  <!-- ======================================================= -->
+  <section id="policies">
+    <h2>§2 Security Policies（3 条）</h2>
+    <p class="section-intro">
+      三条 Policy 分工：<code>Policy Deny</code> 保护前台 www/m（Block 动作）·
+      <code>Policy Alert</code> 测试接口 tapi（仅告警）·
+      <code>Policy Api</code> 保护正式 api。
+      另有 <code>Policy Api-Evaluation</code> 在 hostname-coverage 里评估中（未正式 enforce），覆盖 <code>sapi.*</code> 系列。
+    </p>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">WAF-POL-01</span> Policy Deny — 前台拦截策略</div>
+        <span class="badge fail">Block · 前台</span>
+      </div>
+      <div class="rule-body">
+        <p><strong>Policy ID：</strong> <code>qik1_201886</code></p>
+        <p><strong>动作：</strong> Block（命中直接拦截）</p>
+        <p><strong>覆盖 beautyforever 域名：</strong> <code>www.beautyforever.com</code>、<code>m.beautyforever.com</code></p>
+        <p><strong>同 Policy 挂载的其他站点：</strong> <code>www.unice.com</code> / <code>m.unice.com</code> / <code>mfr.unice.com</code> / <code>fr.unice.com</code>、<code>www.nadula.com</code> / <code>m.nadula.com</code>、<code>www.juliahair.com</code> / <code>m.juliahair.com</code>——前台四品牌全家桶共用一策略。</p>
+        <p><strong>绑定 Match Target：</strong> Target #1（sequence 1，targetId <code>5789054</code>）</p>
+        <div class="callout warn">
+          <strong>2026-04-21 新增：</strong> ASN <code>202425</code> + Host <code>www.beautyforever.com</code> 的请求直接 Block。
+          位于 <strong>Custom Rules</strong>（不是 Network List / Penalty Box），id = <code>60383229</code>，name = "Deny asnumber 202425 for www.beautyforever.com"。
+        </div>
+      </div>
+    </div>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">WAF-POL-02</span> Policy Alert — 测试接口仅告警</div>
+        <span class="badge pending">Alert Only</span>
+      </div>
+      <div class="rule-body">
+        <p><strong>Policy ID：</strong> <code>1218_239915</code></p>
+        <p><strong>动作：</strong> Alert（告警不阻断）</p>
+        <p><strong>覆盖 beautyforever 域名：</strong> <code>tapi.beautyforever.com</code>（测试 API）</p>
+        <p><strong>绑定 Match Target：</strong> Target #2（sequence 2，targetId <code>8996562</code>）</p>
+        <div class="callout">
+          <strong>语义：</strong> 仅 <code>tapi.*</code> 测试域名走这条策略。命中规则只产生 WAF 告警日志（WAP Alerts），不阻断请求——便于测试环境观察误报。
+        </div>
+      </div>
+    </div>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">WAF-POL-03</span> Policy Api — 正式 API 拦截策略</div>
+        <span class="badge info">Block · API</span>
+      </div>
+      <div class="rule-body">
+        <p><strong>Policy ID：</strong> <code>0124_243504</code></p>
+        <p><strong>动作：</strong> Block（命中直接拦截）</p>
+        <p><strong>覆盖 beautyforever 域名：</strong> <code>api.beautyforever.com</code></p>
+        <p><strong>同 Policy 挂载的其他站点：</strong> <code>capi.unice.com</code>、<code>api.nadula.com</code>、<code>api.juliahair.com</code>、<code>apifr.unice.com</code>——正式 API 全家桶共用。</p>
+        <p><strong>绑定 Match Target：</strong> Target #3（sequence 3，targetId <code>7384226</code>）</p>
+        <div class="callout">
+          <strong>注意：</strong> <code>sapi.*</code> 系列（<code>sapi.beautyforever.com</code> / <code>sapi.unice.com</code> 等）归属 <code>Policy Api-Evaluation</code>，未在此 3 条 match target 中，仅挂在 hostname-coverage 的评估状态。
+        </div>
+      </div>
+    </div>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">WAF-POL-SUM</span> Policy Name / ID / 覆盖域名 速查</div>
+        <span class="badge info">汇总表</span>
+      </div>
+      <div class="rule-body">
+        <table class="tbl">
+          <thead><tr><th>Policy Name</th><th>Policy ID</th><th>覆盖的 beautyforever 域名</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Policy Deny</strong></td><td><code>qik1_201886</code></td><td><code>www.beautyforever.com</code>、<code>m.beautyforever.com</code></td></tr>
+            <tr><td><strong>Policy Alert</strong></td><td><code>1218_239915</code></td><td><code>tapi.beautyforever.com</code></td></tr>
+            <tr><td><strong>Policy Api</strong></td><td><code>0124_243504</code></td><td><code>api.beautyforever.com</code></td></tr>
+          </tbody>
+        </table>
+        <div class="callout">
+          另外 <code>sapi.beautyforever.com</code>、<code>sapi.unice.com</code> 等挂在 hostname-coverage 里的 <strong>Policy Api-Evaluation</strong>（评估中，未正式 enforce）。
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================= -->
+  <!-- §3 Match Targets -->
+  <!-- ======================================================= -->
+  <section id="match-targets">
+    <h2>§3 Match Targets（hostname → policy 映射）</h2>
+    <p class="section-intro">
+      三个 <code>website</code> 类型 match target，<code>filePaths=["/*"]</code>（所有路径），按 <strong>sequence 顺序</strong>匹配。
+      每个 match target 声明了要保护的 hostname 列表 + Bypass Network List + effectiveSecurityControls 开关。
+    </p>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">WAF-MT-01</span> Target #1 — sequence 1（targetId <code>5789054</code>）</div>
+        <span class="badge fail">→ Policy Deny</span>
+      </div>
+      <div class="rule-body">
+        <table class="tbl">
+          <tbody>
+            <tr><th>Policy</th><td><code>Policy Deny</code> (<code>qik1_201886</code>)</td></tr>
+            <tr><th>sequence</th><td>1（优先匹配）</td></tr>
+            <tr><th>filePaths</th><td><code>["/*"]</code> 所有路径</td></tr>
+            <tr><th>Bypass Network List</th><td><code>146351_SECURITYBYPASSLIST</code>（<em>Security Bypass List</em>）—— <strong style="color:var(--warn)">2026-04-21 审计：<code>elementCount=0</code>, <code>list=null</code>，Akamai 默认空列表，无实际白名单 IP 生效</strong></td></tr>
+          </tbody>
+        </table>
+        <p><strong>Hostnames（10 个）：</strong></p>
+        <ul>
+          <li><code>www.juliahair.com</code></li>
+          <li><code>m.nadula.com</code></li>
+          <li><strong><code>www.beautyforever.com</code></strong></li>
+          <li><code>www.nadula.com</code></li>
+          <li><strong><code>m.beautyforever.com</code></strong></li>
+          <li><code>mfr.unice.com</code></li>
+          <li><code>www.unice.com</code></li>
+          <li><code>m.unice.com</code></li>
+          <li><code>m.juliahair.com</code></li>
+          <li><code>fr.unice.com</code></li>
+        </ul>
+        <p><strong>effectiveSecurityControls：</strong> Application / Botman / Network / Rate / SlowPost <strong>均开</strong>；AccountProtection、UrlProtection 关。</p>
+      </div>
+    </div>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">WAF-MT-02</span> Target #2 — sequence 2（targetId <code>8996562</code>）</div>
+        <span class="badge pending">→ Policy Alert</span>
+      </div>
+      <div class="rule-body">
+        <table class="tbl">
+          <tbody>
+            <tr><th>Policy</th><td><code>Policy Alert</code> (<code>1218_239915</code>)</td></tr>
+            <tr><th>sequence</th><td>2</td></tr>
+            <tr><th>filePaths</th><td><code>["/*"]</code> 所有路径</td></tr>
+            <tr><th>Hostnames</th><td><code>tapi.beautyforever.com</code>（单一域名）</td></tr>
+            <tr><th>Bypass Network List</th><td>无</td></tr>
+          </tbody>
+        </table>
+        <p><strong>effectiveSecurityControls：</strong> 同 Target #1 —— Application / Botman / Network / Rate / SlowPost 均开；AccountProtection、UrlProtection 关。</p>
+      </div>
+    </div>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">WAF-MT-03</span> Target #3 — sequence 3（targetId <code>7384226</code>）</div>
+        <span class="badge info">→ Policy Api</span>
+      </div>
+      <div class="rule-body">
+        <table class="tbl">
+          <tbody>
+            <tr><th>Policy</th><td><code>Policy Api</code> (<code>0124_243504</code>)</td></tr>
+            <tr><th>sequence</th><td>3</td></tr>
+            <tr><th>filePaths</th><td><code>["/*"]</code> 所有路径</td></tr>
+            <tr><th>Bypass Network List</th><td>无</td></tr>
+          </tbody>
+        </table>
+        <p><strong>Hostnames（5 个）：</strong></p>
+        <ul>
+          <li><code>capi.unice.com</code></li>
+          <li><code>api.nadula.com</code></li>
+          <li><strong><code>api.beautyforever.com</code></strong></li>
+          <li><code>api.juliahair.com</code></li>
+          <li><code>apifr.unice.com</code></li>
+        </ul>
+        <p><strong>effectiveSecurityControls：</strong> 同上 —— 5 项开，2 项关。</p>
+      </div>
+    </div>
+
+    <!-- Bypass Network List -->
+    <div id="bypass" class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">WAF-BYPASS</span> Bypass Network List · <code>146351_SECURITYBYPASSLIST</code></div>
+        <span class="badge pending">IP 白名单</span>
+      </div>
+      <div class="rule-body">
+        <p><strong>名称：</strong> <code>Security Bypass List</code>（Network List ID <code>146351_SECURITYBYPASSLIST</code>）</p>
+        <p><strong>作用：</strong> 仅挂在 <strong>Target #1</strong>（Policy Deny 前台全家桶）上，命中此 IP 白名单的请求绕过整个 WAF 评估——用于公司办公出口 IP、内部测试 IP、可信合作伙伴 IP 等。</p>
+        <table class="tbl">
+          <thead><tr><th>属性</th><th>值</th></tr></thead>
+          <tbody>
+            <tr><td>Network List ID</td><td><code>146351_SECURITYBYPASSLIST</code></td></tr>
+            <tr><td>名称</td><td><code>Security Bypass List</code></td></tr>
+            <tr><td>作用范围</td><td>Target #1（Policy Deny 前台）</td></tr>
+            <tr><td>Target #2 / #3</td><td>未挂载</td></tr>
+            <tr><td>条目内容</td><td><em>未展开</em>（见 §6 深挖项）</td></tr>
+          </tbody>
+        </table>
+        <div class="callout warn">
+          <strong>迁移提示：</strong> AWS WAF 侧对应 <code>IPSetReferenceStatement</code>（用 <code>aws_wafv2_ip_set</code> 资源），再通过 <code>not_statement</code> + <code>rule_action = allow</code> 实现等价 bypass。需先导出此 List 的完整 IP/CIDR 条目。
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================= -->
+  <!-- §4 启用的安全控件 -->
+  <!-- ======================================================= -->
+  <section id="controls">
+    <h2>§4 启用的安全控件（所有 policy 一致）</h2>
+    <p class="section-intro">
+      三条 Policy 在 effectiveSecurityControls 字段上完全一致：<strong>5 开 2 关</strong>。
+    </p>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">WAF-CTRL</span> Security Controls 总览</div>
+        <span class="badge info">5 开 / 2 关</span>
+      </div>
+      <div class="rule-body">
+        <table class="tbl">
+          <thead><tr><th>Control</th><th>状态</th><th>说明</th></tr></thead>
+          <tbody>
+            <tr><td>Application Layer Controls (WAF rules)</td><td style="text-align:center;color:var(--success)"><strong>开</strong></td><td>SQLi / XSS / RCE 等 L7 规则</td></tr>
+            <tr><td>Bot Manager</td><td style="text-align:center;color:var(--success)"><strong>开</strong></td><td>Bot 分类 + 动作</td></tr>
+            <tr><td>Network Layer Controls (IP/Geo/ASN)</td><td style="text-align:center;color:var(--success)"><strong>开</strong></td><td>2026-04-21 新增 ASN 202425 应在此层</td></tr>
+            <tr><td>Rate Controls</td><td style="text-align:center;color:var(--success)"><strong>开</strong></td><td>频控</td></tr>
+            <tr><td>Slow POST Protection</td><td style="text-align:center;color:var(--success)"><strong>开</strong></td><td>慢速 POST 攻击防护</td></tr>
+            <tr><td>Account Protection</td><td style="text-align:center;color:var(--warn)"><strong>关</strong></td><td>撞库 / 弱密码专项未启用</td></tr>
+            <tr><td>URL Protection</td><td style="text-align:center;color:var(--warn)"><strong>关</strong></td><td>URL 级别的专项保护未启用</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================= -->
+  <!-- §5 Hostname Coverage -->
+  <!-- ======================================================= -->
+  <section id="coverage">
+    <h2>§5 Hostname Coverage 汇总</h2>
+    <p class="section-intro">
+      从 <code>hostname-coverage</code> 端点取得的全量映射。除了 3 条 Match Target 里列出的 hostname，
+      还有一批 <code>sapi.*</code> 挂在 <code>Policy Api-Evaluation</code>（评估中状态）。
+    </p>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">WAF-CVR-OK</span> 受 WAF 保护（covered）</div>
+        <span class="badge info">Covered</span>
+      </div>
+      <div class="rule-body">
+        <table class="tbl">
+          <thead><tr><th>Hostname</th><th>Policy</th></tr></thead>
+          <tbody>
+            <tr><td><code>www.beautyforever.com</code></td><td>Policy Deny</td></tr>
+            <tr><td><code>m.beautyforever.com</code></td><td>Policy Deny</td></tr>
+            <tr><td><code>api.beautyforever.com</code></td><td>Policy Api</td></tr>
+            <tr><td><code>tapi.beautyforever.com</code></td><td>Policy Alert</td></tr>
+            <tr><td><code>sapi.beautyforever.com</code></td><td>Policy Api-Evaluation</td></tr>
+            <tr><td><code>www.unice.com</code> / <code>m.unice.com</code> / <code>mfr.unice.com</code> / <code>fr.unice.com</code></td><td>Policy Deny</td></tr>
+            <tr><td><code>capi.unice.com</code> / <code>apifr.unice.com</code></td><td>Policy Api</td></tr>
+            <tr><td><code>sapi.unice.com</code></td><td>Policy Api-Evaluation</td></tr>
+            <tr><td><code>www.nadula.com</code> / <code>m.nadula.com</code></td><td>Policy Deny</td></tr>
+            <tr><td><code>api.nadula.com</code></td><td>Policy Api</td></tr>
+            <tr><td><code>sapi.nadula.com</code></td><td>Policy Api-Evaluation</td></tr>
+            <tr><td><code>www.juliahair.com</code> / <code>m.juliahair.com</code></td><td>Policy Deny</td></tr>
+            <tr><td><code>api.juliahair.com</code></td><td>Policy Api</td></tr>
+            <tr><td><code>sapi.juliahair.com</code></td><td>Policy Api-Evaluation</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="uncovered" class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">WAF-CVR-NO</span> 未受 WAF 保护（not covered）</div>
+        <span class="badge fail">Not Covered</span>
+      </div>
+      <div class="rule-body">
+        <table class="tbl">
+          <thead><tr><th>Hostname</th><th>备注</th></tr></thead>
+          <tbody>
+            <tr><td><code>tw.beautyforever.com</code></td><td>台湾站？</td></tr>
+            <tr><td><code>tm.beautyforever.com</code></td><td>台湾 Mobile？</td></tr>
+            <tr><td><code>tw.velvethairextension.com</code></td><td>历史品牌</td></tr>
+            <tr><td><code>tm.velvethairextension.com</code></td><td>历史品牌</td></tr>
+            <tr><td><code>tapi.velvethairextension.com</code></td><td>历史品牌 API</td></tr>
+            <tr><td><code>tm.juliahair.com</code></td><td>历史</td></tr>
+            <tr><td><code>tw.juliahair.com</code></td><td>历史</td></tr>
+            <tr><td><code>tm.unice.com</code></td><td>历史</td></tr>
+          </tbody>
+        </table>
+        <div class="callout warn">
+          <strong>注意：</strong> CDN 里也<strong>没有这些域名的 Property</strong>。迁移时需确认是否还在使用；如是"历史/测试"应显式下线。
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================= -->
+  <!-- §6 深挖 -->
+  <!-- ======================================================= -->
+  <section id="deep">
+    <h2>§6 值得深挖（未在本文档展开，Team Agent 可继续）</h2>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">WAF-TODO</span> 待深挖的 8 项子结构</div>
+        <span class="badge pending">未展开</span>
+      </div>
+      <div class="rule-body">
+        <ol>
+          <li>
+            <strong>Custom Rules</strong>
+            <pre class="code" data-label="shell">akamai appsec custom-rules --config-id 89613</pre>
+          </li>
+          <li>
+            <strong>Attack Groups / Rule Actions</strong>
+            <pre class="code" data-label="shell">akamai appsec attack-group --config-id 89613 --version 145 --policy-id qik1_201886</pre>
+          </li>
+          <li>
+            <strong>Rate Policies</strong>
+            <pre class="code" data-label="shell">akamai appsec rate-policies --config-id 89613 --version 145</pre>
+          </li>
+          <li>
+            <strong>Bot Management</strong>
+            <pre class="code" data-label="shell">akamai appsec bot-category-action
+akamai appsec bot-detection
+akamai appsec custom-bot-category</pre>
+          </li>
+          <li>
+            <strong>Network Lists：</strong> <code>146351_SECURITYBYPASSLIST</code>（Bypass 白名单）真实 IP/CIDR 内容 —— <span style="color:var(--pass)">✅ 2026-04-21 已查：elementCount=0，为空列表</span>
+          </li>
+          <li>
+            <strong>刚加的 ASN 202425 拦截规则</strong> —— <span style="color:var(--pass)">✅ 2026-04-21 已定位：Custom Rule id <code>60383229</code>，hostMatch+asNumberMatch AND</span>
+          </li>
+          <li>
+            <strong>Slow POST、Rate Control</strong> 阈值（RPM、请求体时长）
+          </li>
+          <li>
+            <strong>Reputation Profile</strong>
+            <pre class="code" data-label="shell">akamai appsec reputation-profile</pre>
+          </li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <div>
+    Akamai 配置调研 · beautyforever.com · Module 20 · WAF Security Configuration 89613 v145 · 2026-04-21<br>
+    源文档：<code>../doc/20-waf-security-configuration.md</code> · 原始 JSON：<code>../raw/waf_*.json</code> · Keith · AWS Solutions Architect
+  </div>
+</footer>
+
+<script src="./assets/app.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,2464 @@
+{
+  "accountId": "act_F-AC-4891758",
+  "contractId": "ctr_V-4GARL4E",
+  "groupId": "grp_230665",
+  "propertyId": "prp_910841",
+  "propertyName": "beautyforever.com_essl",
+  "propertyVersion": 62,
+  "etag": "bd975e666a0abbd3495baf612b5b79d1185cd2a9",
+  "rules": {
+    "name": "default",
+    "children": [
+      {
+        "name": "Augment insights",
+        "children": [
+          {
+            "name": "mPulse RUM",
+            "children": [],
+            "behaviors": [
+              {
+                "name": "mPulse",
+                "options": {
+                  "apiKey": "",
+                  "bufferSize": "",
+                  "configOverride": "",
+                  "enabled": false,
+                  "loaderVersion": "V12",
+                  "requirePci": false,
+                  "titleOptional": ""
+                }
+              }
+            ],
+            "criteria": [],
+            "criteriaMustSatisfy": "all",
+            "comments": "Collect and analyze real-user data to monitor the performance of your website."
+          },
+          {
+            "name": "Log delivery",
+            "children": [],
+            "behaviors": [
+              {
+                "name": "setVariable",
+                "options": {
+                  "valueSource": "EXTRACT",
+                  "transform": "NONE",
+                  "variableName": "PMUSER_FINGERPRINTVAL",
+                  "extractLocation": "COOKIE",
+                  "cookieName": "fingerprintVal"
+                }
+              },
+              {
+                "name": "report",
+                "options": {
+                  "logAcceptLanguage": true,
+                  "logCookies": "ALL",
+                  "logCustomLogField": true,
+                  "logEdgeIP": true,
+                  "logHost": true,
+                  "logReferer": true,
+                  "logUserAgent": true,
+                  "logXForwardedFor": false,
+                  "customLogField": "{fingerprintval:{{user.PMUSER_FINGERPRINTVAL}}"
+                }
+              }
+            ],
+            "criteria": [],
+            "criteriaMustSatisfy": "all",
+            "comments": "Specify the level of detail you want to be logged in your Log Delivery Service reports. Log User-Agent Header to obtain detailed information in the Traffic by Browser and OS report."
+          }
+        ],
+        "behaviors": [],
+        "criteria": [],
+        "criteriaMustSatisfy": "all",
+        "comments": "Control the settings related to monitoring and reporting. This gives you additional visibility into your traffic and audiences."
+      },
+      {
+        "name": "Accelerate delivery",
+        "children": [
+          {
+            "name": "Origin connectivity",
+            "children": [],
+            "behaviors": [
+              {
+                "name": "dnsAsyncRefresh",
+                "options": {
+                  "enabled": true,
+                  "timeout": "1h"
+                }
+              },
+              {
+                "name": "timeout",
+                "options": {
+                  "value": "5s"
+                }
+              },
+              {
+                "name": "readTimeout",
+                "options": {
+                  "value": "120s",
+                  "firstByteTimeout": "120s"
+                }
+              }
+            ],
+            "criteria": [],
+            "criteriaMustSatisfy": "all",
+            "comments": "Optimize the connection between edge and origin."
+          },
+          {
+            "name": "Protocol optimizations",
+            "children": [],
+            "behaviors": [
+              {
+                "name": "enhancedAkamaiProtocol",
+                "options": {
+                  "display": ""
+                }
+              },
+              {
+                "name": "http2",
+                "options": {
+                  "enabled": ""
+                }
+              },
+              {
+                "name": "allowTransferEncoding",
+                "options": {
+                  "enabled": true
+                }
+              },
+              {
+                "name": "http3",
+                "options": {
+                  "enable": true
+                }
+              }
+            ],
+            "criteria": [],
+            "criteriaMustSatisfy": "all",
+            "comments": "Serve your website using modern and fast protocols."
+          },
+          {
+            "name": "Prefetching",
+            "children": [
+              {
+                "name": "Prefetching objects",
+                "children": [
+                  {
+                    "name": "Bots",
+                    "children": [],
+                    "behaviors": [
+                      {
+                        "name": "prefetch",
+                        "options": {
+                          "enabled": false
+                        }
+                      }
+                    ],
+                    "criteria": [
+                      {
+                        "name": "userAgent",
+                        "options": {
+                          "matchCaseSensitive": false,
+                          "matchOperator": "IS_ONE_OF",
+                          "matchWildcard": true,
+                          "values": [
+                            "*bot*",
+                            "*crawl*",
+                            "*spider*"
+                          ]
+                        }
+                      }
+                    ],
+                    "criteriaMustSatisfy": "all",
+                    "comments": "Disable prefetching for specific clients identifying themselves as bots and crawlers. This avoids requesting unnecessary resources from the origin."
+                  }
+                ],
+                "behaviors": [
+                  {
+                    "name": "prefetch",
+                    "options": {
+                      "enabled": false
+                    }
+                  }
+                ],
+                "criteria": [],
+                "criteriaMustSatisfy": "all",
+                "comments": "Define for which HTML pages prefetching should be enabled."
+              },
+              {
+                "name": "Prefetchable objects",
+                "children": [],
+                "behaviors": [
+                  {
+                    "name": "prefetchable",
+                    "options": {
+                      "enabled": false
+                    }
+                  }
+                ],
+                "criteria": [
+                  {
+                    "name": "fileExtension",
+                    "options": {
+                      "matchCaseSensitive": false,
+                      "matchOperator": "IS_ONE_OF",
+                      "values": [
+                        "css",
+                        "js",
+                        "jpg",
+                        "jpeg",
+                        "jp2",
+                        "png",
+                        "gif",
+                        "svg",
+                        "svgz",
+                        "webp",
+                        "eot",
+                        "woff",
+                        "woff2",
+                        "otf",
+                        "ttf"
+                      ]
+                    }
+                  }
+                ],
+                "criteriaMustSatisfy": "all",
+                "comments": "Define which resources should be prefetched."
+              }
+            ],
+            "behaviors": [],
+            "criteria": [],
+            "criteriaMustSatisfy": "all",
+            "comments": "Instruct edge servers to retrieve embedded resources before the browser requests them."
+          },
+          {
+            "name": "Adaptive acceleration",
+            "children": [],
+            "behaviors": [],
+            "criteria": [],
+            "criteriaMustSatisfy": "all",
+            "comments": "Automatically and continuously apply performance optimizations to your website using machine learning."
+          }
+        ],
+        "behaviors": [],
+        "criteria": [],
+        "criteriaMustSatisfy": "all",
+        "comments": "Control the settings related to improving the performance of delivering objects to your users."
+      },
+      {
+        "name": "Offload origin",
+        "children": [
+          {
+            "name": "CSS and JavaScript",
+            "children": [],
+            "behaviors": [
+              {
+                "name": "caching",
+                "options": {
+                  "behavior": "MAX_AGE",
+                  "mustRevalidate": false,
+                  "ttl": "365d"
+                }
+              },
+              {
+                "name": "cacheId",
+                "options": {
+                  "rule": "INCLUDE_QUERY_PARAMS",
+                  "includeValue": true,
+                  "optional": true,
+                  "elements": [
+                    "v"
+                  ]
+                }
+              }
+            ],
+            "criteria": [
+              {
+                "name": "fileExtension",
+                "options": {
+                  "matchCaseSensitive": false,
+                  "matchOperator": "IS_ONE_OF",
+                  "values": [
+                    "css",
+                    "js"
+                  ]
+                }
+              }
+            ],
+            "criteriaMustSatisfy": "any",
+            "comments": "Override the default caching behavior for CSS and JavaScript"
+          },
+          {
+            "name": "Fonts",
+            "children": [],
+            "behaviors": [
+              {
+                "name": "caching",
+                "options": {
+                  "behavior": "MAX_AGE",
+                  "mustRevalidate": false,
+                  "ttl": "365d"
+                }
+              }
+            ],
+            "criteria": [
+              {
+                "name": "fileExtension",
+                "options": {
+                  "matchCaseSensitive": false,
+                  "matchOperator": "IS_ONE_OF",
+                  "values": [
+                    "eot",
+                    "woff",
+                    "woff2",
+                    "otf",
+                    "ttf"
+                  ]
+                }
+              }
+            ],
+            "criteriaMustSatisfy": "any",
+            "comments": "Override the default caching behavior for fonts."
+          },
+          {
+            "name": "Images",
+            "children": [],
+            "behaviors": [
+              {
+                "name": "caching",
+                "options": {
+                  "behavior": "MAX_AGE",
+                  "mustRevalidate": false,
+                  "ttl": "365d"
+                }
+              },
+              {
+                "name": "cacheId",
+                "options": {
+                  "rule": "INCLUDE_ALL_QUERY_PARAMS"
+                }
+              }
+            ],
+            "criteria": [
+              {
+                "name": "fileExtension",
+                "options": {
+                  "matchCaseSensitive": false,
+                  "matchOperator": "IS_ONE_OF",
+                  "values": [
+                    "jpg",
+                    "jpeg",
+                    "png",
+                    "gif",
+                    "webp",
+                    "jp2",
+                    "ico",
+                    "svg",
+                    "svgz"
+                  ]
+                }
+              }
+            ],
+            "criteriaMustSatisfy": "any",
+            "comments": "Override the default caching behavior for images."
+          },
+          {
+            "name": "Image and Video Manager (Images)",
+            "children": [],
+            "behaviors": [
+              {
+                "name": "caching",
+                "options": {
+                  "behavior": "MAX_AGE",
+                  "mustRevalidate": false,
+                  "ttl": "365d"
+                }
+              }
+            ],
+            "criteria": [
+              {
+                "name": "fileExtension",
+                "options": {
+                  "matchCaseSensitive": false,
+                  "matchOperator": "IS_ONE_OF",
+                  "values": [
+                    "jpg",
+                    "gif",
+                    "jpeg",
+                    "png",
+                    "imviewer"
+                  ]
+                }
+              },
+              {
+                "name": "hostname",
+                "options": {
+                  "matchOperator": "IS_ONE_OF",
+                  "values": [
+                    "m.beautyforever.com",
+                    "www.beautyforever.com"
+                  ]
+                }
+              }
+            ],
+            "criteriaMustSatisfy": "all",
+            "comments": "Enable Scale for Mobile to serve the best available size for the requesting device. (Careful testing is highly recommended.) Enable Use Best File Type to serve the image format that works best for the requesting client. To configure breakpoint widths, derivative image quality, and artistic transformations, save and activate this configuration; then, create policies for this policy set via either Image and Video Manager Policy Manager or the OPEN Image and Video Manager API."
+          },
+          {
+            "name": "HTML pages",
+            "children": [],
+            "behaviors": [
+              {
+                "name": "caching",
+                "options": {
+                  "behavior": "NO_STORE"
+                }
+              }
+            ],
+            "criteria": [
+              {
+                "name": "fileExtension",
+                "options": {
+                  "matchCaseSensitive": false,
+                  "matchOperator": "IS_ONE_OF",
+                  "values": [
+                    "html",
+                    "htm",
+                    "php",
+                    "jsp",
+                    "aspx",
+                    "EMPTY_STRING"
+                  ]
+                }
+              }
+            ],
+            "criteriaMustSatisfy": "all",
+            "comments": "Override the default caching behavior for HTML pages cached on edge servers."
+          },
+          {
+            "name": "Redirects",
+            "children": [],
+            "behaviors": [
+              {
+                "name": "cacheRedirect",
+                "options": {
+                  "enabled": "false"
+                }
+              },
+              {
+                "name": "chaseRedirects",
+                "options": {
+                  "enabled": false
+                }
+              }
+            ],
+            "criteria": [],
+            "criteriaMustSatisfy": "all",
+            "comments": "Configure caching for HTTP redirects. The redirect is cached for the same TTL as a 200 HTTP response when this feature is enabled."
+          },
+          {
+            "name": "POST responses",
+            "children": [],
+            "behaviors": [
+              {
+                "name": "cachePost",
+                "options": {
+                  "enabled": false
+                }
+              }
+            ],
+            "criteria": [],
+            "criteriaMustSatisfy": "all",
+            "comments": "Define when HTTP POST requests should be cached. You should enable it under a criteria match."
+          },
+          {
+            "name": "Uncacheable objects",
+            "children": [],
+            "behaviors": [
+              {
+                "name": "downstreamCache",
+                "options": {
+                  "behavior": "BUST"
+                }
+              }
+            ],
+            "criteria": [
+              {
+                "name": "cacheability",
+                "options": {
+                  "matchOperator": "IS_NOT",
+                  "value": "CACHEABLE"
+                }
+              }
+            ],
+            "criteriaMustSatisfy": "all",
+            "comments": "Configure the default client caching behavior for uncacheable content at the edge."
+          }
+        ],
+        "behaviors": [
+          {
+            "name": "caching",
+            "options": {
+              "behavior": "NO_STORE"
+            }
+          },
+          {
+            "name": "tieredDistribution",
+            "options": {
+              "enabled": true
+            }
+          },
+          {
+            "name": "validateEntityTag",
+            "options": {
+              "enabled": false
+            }
+          },
+          {
+            "name": "removeVary",
+            "options": {
+              "enabled": true
+            }
+          },
+          {
+            "name": "cacheError",
+            "options": {
+              "enabled": true,
+              "preserveStale": true,
+              "ttl": "10s"
+            }
+          },
+          {
+            "name": "cacheKeyQueryParams",
+            "options": {
+              "behavior": "IGNORE_ALL"
+            }
+          },
+          {
+            "name": "prefreshCache",
+            "options": {
+              "enabled": true,
+              "prefreshval": 90
+            }
+          },
+          {
+            "name": "downstreamCache",
+            "options": {
+              "allowBehavior": "LESSER",
+              "behavior": "ALLOW",
+              "sendHeaders": "CACHE_CONTROL",
+              "sendPrivate": false
+            }
+          }
+        ],
+        "criteria": [],
+        "criteriaMustSatisfy": "all",
+        "comments": "Control the settings related to caching content at the edge and in the browser. As a result, fewer requests go to your origin, fewer bytes leave your data centers, and your assets are closer to your users."
+      },
+      {
+        "name": "Strengthen security",
+        "children": [
+          {
+            "name": "Allowed methods",
+            "children": [
+              {
+                "name": "POST",
+                "children": [],
+                "behaviors": [
+                  {
+                    "name": "allowPost",
+                    "options": {
+                      "allowWithoutContentLength": false,
+                      "enabled": true
+                    }
+                  }
+                ],
+                "criteria": [],
+                "criteriaMustSatisfy": "all",
+                "comments": "Allow use of the POST HTTP request method."
+              },
+              {
+                "name": "OPTIONS",
+                "children": [],
+                "behaviors": [
+                  {
+                    "name": "allowOptions",
+                    "options": {
+                      "enabled": true
+                    }
+                  }
+                ],
+                "criteria": [],
+                "criteriaMustSatisfy": "all",
+                "comments": "Allow use of the OPTIONS HTTP request method."
+              },
+              {
+                "name": "PUT",
+                "children": [],
+                "behaviors": [
+                  {
+                    "name": "allowPut",
+                    "options": {
+                      "enabled": true
+                    }
+                  }
+                ],
+                "criteria": [],
+                "criteriaMustSatisfy": "all",
+                "comments": "Allow use of the PUT HTTP request method."
+              },
+              {
+                "name": "DELETE",
+                "children": [],
+                "behaviors": [
+                  {
+                    "name": "allowDelete",
+                    "options": {
+                      "enabled": true,
+                      "allowBody": false
+                    }
+                  }
+                ],
+                "criteria": [],
+                "criteriaMustSatisfy": "all",
+                "comments": "Allow use of the DELETE HTTP request method."
+              },
+              {
+                "name": "PATCH",
+                "children": [],
+                "behaviors": [
+                  {
+                    "name": "allowPatch",
+                    "options": {
+                      "enabled": true
+                    }
+                  }
+                ],
+                "criteria": [],
+                "criteriaMustSatisfy": "all",
+                "comments": "Allow use of the PATCH HTTP request method."
+              }
+            ],
+            "behaviors": [
+              {
+                "name": "allHttpInCacheHierarchy",
+                "options": {
+                  "enabled": true
+                }
+              }
+            ],
+            "criteria": [],
+            "criteriaMustSatisfy": "all",
+            "comments": "Allow the use of HTTP methods. Consider enabling additional methods under a path match for increased origin security."
+          },
+          {
+            "name": "Obfuscate debug info",
+            "children": [],
+            "behaviors": [
+              {
+                "name": "cacheTagVisible",
+                "options": {
+                  "behavior": "PRAGMA_HEADER"
+                }
+              }
+            ],
+            "criteria": [],
+            "criteriaMustSatisfy": "all",
+            "comments": "Do not expose back-end information unless the request contains the Pragma debug header."
+          },
+          {
+            "name": "Obfuscate backend info",
+            "children": [],
+            "behaviors": [
+              {
+                "name": "modifyOutgoingResponseHeader",
+                "options": {
+                  "action": "DELETE",
+                  "customHeaderName": "X-Powered-By",
+                  "standardDeleteHeaderName": "OTHER"
+                }
+              },
+              {
+                "name": "modifyOutgoingResponseHeader",
+                "options": {
+                  "action": "DELETE",
+                  "customHeaderName": "Server",
+                  "standardDeleteHeaderName": "OTHER"
+                }
+              }
+            ],
+            "criteria": [
+              {
+                "name": "requestHeader",
+                "options": {
+                  "headerName": "X-Akamai-Debug",
+                  "matchCaseSensitiveValue": true,
+                  "matchOperator": "IS_NOT_ONE_OF",
+                  "matchWildcardName": false,
+                  "matchWildcardValue": false,
+                  "values": [
+                    "true"
+                  ]
+                }
+              }
+            ],
+            "criteriaMustSatisfy": "all",
+            "comments": "Do not expose back-end information unless the request contains an additional secret header. Regularly change the criteria to use a specific unique value for the secret header."
+          }
+        ],
+        "behaviors": [],
+        "criteria": [],
+        "criteriaMustSatisfy": "all",
+        "comments": "Control the settings that minimize the information your website shares with clients and malicious entities to reduce your exposure to threats."
+      },
+      {
+        "name": "Increase availability",
+        "children": [
+          {
+            "name": "Site failover",
+            "children": [],
+            "behaviors": [
+              {
+                "name": "failAction",
+                "options": {
+                  "enabled": false
+                }
+              }
+            ],
+            "criteria": [
+              {
+                "name": "originTimeout",
+                "options": {
+                  "matchOperator": "ORIGIN_TIMED_OUT"
+                }
+              }
+            ],
+            "criteriaMustSatisfy": "any",
+            "comments": "Specify how edge servers respond when the origin is not available."
+          },
+          {
+            "name": "Origin health",
+            "children": [],
+            "behaviors": [
+              {
+                "name": "healthDetection",
+                "options": {
+                  "maximumReconnects": 3,
+                  "retryCount": 3,
+                  "retryInterval": "10s"
+                }
+              }
+            ],
+            "criteria": [],
+            "criteriaMustSatisfy": "all",
+            "comments": "Monitor the health of your origin by tracking unsuccessful IP connection attempts."
+          }
+        ],
+        "behaviors": [],
+        "criteria": [],
+        "criteriaMustSatisfy": "all",
+        "comments": "Control how to respond when your origin or third parties are slow or even down to minimize the negative impact on user experience."
+      },
+      {
+        "name": "Minimize payload",
+        "children": [
+          {
+            "name": "Compressible objects",
+            "children": [],
+            "behaviors": [
+              {
+                "name": "gzipResponse",
+                "options": {
+                  "behavior": "ALWAYS"
+                }
+              }
+            ],
+            "criteria": [
+              {
+                "name": "contentType",
+                "options": {
+                  "matchCaseSensitive": false,
+                  "matchOperator": "IS_ONE_OF",
+                  "matchWildcard": true,
+                  "values": [
+                    "application/*javascript*",
+                    "application/*json*",
+                    "application/*xml*",
+                    "application/text*",
+                    "application/vnd-ms-fontobject",
+                    "application/vnd.microsoft.icon",
+                    "application/x-font-opentype",
+                    "application/x-font-truetype",
+                    "application/x-font-ttf",
+                    "application/xmlfont/eot",
+                    "font/eot",
+                    "font/opentype",
+                    "font/otf",
+                    "image/svg+xml",
+                    "image/vnd.microsoft.icon",
+                    "image/x-icon",
+                    "text/*",
+                    "application/octet-stream*",
+                    "application/x-font-eot*",
+                    "font/ttf",
+                    "application/font-ttf",
+                    "application/font-sfnt",
+                    "application/x-tgif"
+                  ]
+                }
+              }
+            ],
+            "criteriaMustSatisfy": "all",
+            "comments": "Serve gzip compressed content for text-based formats."
+          }
+        ],
+        "behaviors": [],
+        "criteria": [],
+        "criteriaMustSatisfy": "all",
+        "comments": "Control the settings that reduce the size of the delivered content and decrease the number of bytes sent by your properties. This allows you to cut down the network overhead of your website or API."
+      },
+      {
+        "name": "Hostnames",
+        "children": [
+          {
+            "name": "www.beautyforever.com",
+            "children": [],
+            "behaviors": [
+              {
+                "name": "origin",
+                "options": {
+                  "originType": "CUSTOMER",
+                  "forwardHostHeader": "REQUEST_HOST_HEADER",
+                  "cacheKeyHostname": "REQUEST_HOST_HEADER",
+                  "compress": true,
+                  "enableTrueClientIp": true,
+                  "trueClientIpHeader": "True-Client-IP",
+                  "trueClientIpClientSetting": false,
+                  "verificationMode": "CUSTOM",
+                  "originSni": true,
+                  "httpPort": 80,
+                  "httpsPort": 443,
+                  "hostname": "lq-bf-nuxt-1212474737.us-east-2.elb.amazonaws.com",
+                  "originCertificate": "",
+                  "ports": "",
+                  "customValidCnValues": [
+                    "{{Origin Hostname}}",
+                    "{{Forward Host Header}}"
+                  ],
+                  "originCertsToHonor": "COMBO",
+                  "standardCertificateAuthorities": [
+                    "akamai-permissive",
+                    "THIRD_PARTY_AMAZON"
+                  ],
+                  "customCertificateAuthorities": [],
+                  "customCertificates": [],
+                  "ipVersion": "IPV4",
+                  "minTlsVersion": "DYNAMIC",
+                  "tlsVersionTitle": "",
+                  "useUniqueCacheKey": false
+                }
+              },
+              {
+                "name": "cpCode",
+                "options": {
+                  "value": {
+                    "id": 1435977,
+                    "description": "www.beautyforever.com-Ion",
+                    "products": [
+                      "Fresca"
+                    ],
+                    "createdDate": 1675929522000,
+                    "cpCodeLimits": null,
+                    "name": "www.beautyforever.com-Ion"
+                  },
+                  "enableDefaultContentProviderCode": false
+                }
+              }
+            ],
+            "criteria": [
+              {
+                "name": "hostname",
+                "options": {
+                  "matchOperator": "IS_ONE_OF",
+                  "values": [
+                    "www.beautyforever.com"
+                  ]
+                }
+              }
+            ],
+            "criteriaMustSatisfy": "all",
+            "comments": ""
+          },
+          {
+            "name": "m.beautyforever.com",
+            "children": [],
+            "behaviors": [
+              {
+                "name": "origin",
+                "options": {
+                  "originType": "CUSTOMER",
+                  "forwardHostHeader": "REQUEST_HOST_HEADER",
+                  "cacheKeyHostname": "REQUEST_HOST_HEADER",
+                  "compress": true,
+                  "enableTrueClientIp": true,
+                  "trueClientIpHeader": "True-Client-IP",
+                  "trueClientIpClientSetting": false,
+                  "verificationMode": "CUSTOM",
+                  "originSni": true,
+                  "httpPort": 80,
+                  "httpsPort": 443,
+                  "hostname": "lq-bf-nuxt-1212474737.us-east-2.elb.amazonaws.com",
+                  "originCertificate": "",
+                  "ports": "",
+                  "customValidCnValues": [
+                    "{{Origin Hostname}}",
+                    "{{Forward Host Header}}"
+                  ],
+                  "originCertsToHonor": "COMBO",
+                  "standardCertificateAuthorities": [
+                    "akamai-permissive",
+                    "THIRD_PARTY_AMAZON"
+                  ],
+                  "customCertificateAuthorities": [],
+                  "customCertificates": [],
+                  "ipVersion": "IPV4",
+                  "minTlsVersion": "DYNAMIC",
+                  "tlsVersionTitle": "",
+                  "useUniqueCacheKey": false
+                }
+              },
+              {
+                "name": "cpCode",
+                "options": {
+                  "value": {
+                    "id": 1435979,
+                    "description": "m.beautyforever.com-Ion",
+                    "products": [
+                      "Fresca"
+                    ],
+                    "createdDate": 1675929676000,
+                    "cpCodeLimits": {
+                      "limit": 100,
+                      "currentCapacity": 98,
+                      "limitType": "global"
+                    },
+                    "name": "m.beautyforever.com-Ion"
+                  },
+                  "enableDefaultContentProviderCode": false
+                }
+              }
+            ],
+            "criteria": [
+              {
+                "name": "hostname",
+                "options": {
+                  "matchOperator": "IS_ONE_OF",
+                  "values": [
+                    "m.beautyforever.com"
+                  ]
+                }
+              }
+            ],
+            "criteriaMustSatisfy": "all",
+            "comments": ""
+          }
+        ],
+        "behaviors": [],
+        "criteria": [],
+        "criteriaMustSatisfy": "all",
+        "comments": ""
+      },
+      {
+        "name": "Redirect",
+        "children": [
+          {
+            "name": "Redirect to HTTPS",
+            "children": [],
+            "behaviors": [
+              {
+                "name": "redirect",
+                "options": {
+                  "queryString": "APPEND",
+                  "responseCode": 301,
+                  "destinationHostname": "SAME_AS_REQUEST",
+                  "destinationPath": "SAME_AS_REQUEST",
+                  "destinationProtocol": "HTTPS",
+                  "mobileDefaultChoice": "DEFAULT"
+                }
+              }
+            ],
+            "criteria": [
+              {
+                "name": "requestProtocol",
+                "options": {
+                  "value": "HTTP"
+                }
+              },
+              {
+                "name": "requestType",
+                "options": {
+                  "matchOperator": "IS",
+                  "value": "CLIENT_REQ"
+                }
+              }
+            ],
+            "criteriaMustSatisfy": "all",
+            "comments": "Redirect to the same URL on HTTPS protocol, issuing a 301 response code (Moved Permanently). You may change the response code to 302 if needed."
+          },
+          {
+            "name": " Default PC to mobile",
+            "children": [],
+            "behaviors": [
+              {
+                "name": "redirect",
+                "options": {
+                  "mobileDefaultChoice": "DEFAULT",
+                  "destinationProtocol": "HTTPS",
+                  "destinationHostname": "OTHER",
+                  "destinationPath": "SAME_AS_REQUEST",
+                  "queryString": "APPEND",
+                  "responseCode": 302,
+                  "destinationHostnameOther": "m.beautyforever.com"
+                }
+              }
+            ],
+            "criteria": [
+              {
+                "name": "hostname",
+                "options": {
+                  "matchOperator": "IS_ONE_OF",
+                  "values": [
+                    "www.beautyforever.com"
+                  ]
+                }
+              },
+              {
+                "name": "deviceCharacteristic",
+                "options": {
+                  "characteristic": "IS_MOBILE",
+                  "booleanValue": true
+                }
+              },
+              {
+                "name": "userAgent",
+                "options": {
+                  "matchOperator": "IS_NOT_ONE_OF",
+                  "matchWildcard": true,
+                  "matchCaseSensitive": false,
+                  "values": [
+                    "LqPassWaf/851.3",
+                    "LqPassWaf/851.3 (it; Categraf)"
+                  ]
+                }
+              },
+              {
+                "name": "fileExtension",
+                "options": {
+                  "matchOperator": "IS_NOT_ONE_OF",
+                  "matchCaseSensitive": false,
+                  "values": [
+                    "js",
+                    "css"
+                  ]
+                }
+              }
+            ],
+            "criteriaMustSatisfy": "all",
+            "comments": ""
+          },
+          {
+            "name": "Default Mobile to PC",
+            "children": [],
+            "behaviors": [
+              {
+                "name": "redirect",
+                "options": {
+                  "mobileDefaultChoice": "DEFAULT",
+                  "destinationProtocol": "HTTPS",
+                  "destinationHostname": "OTHER",
+                  "destinationPath": "SAME_AS_REQUEST",
+                  "queryString": "APPEND",
+                  "responseCode": 302,
+                  "destinationHostnameOther": "www.beautyforever.com"
+                }
+              }
+            ],
+            "criteria": [
+              {
+                "name": "hostname",
+                "options": {
+                  "matchOperator": "IS_ONE_OF",
+                  "values": [
+                    "m.beautyforever.com"
+                  ]
+                }
+              },
+              {
+                "name": "deviceCharacteristic",
+                "options": {
+                  "characteristic": "IS_MOBILE",
+                  "booleanValue": false
+                }
+              },
+              {
+                "name": "userAgent",
+                "options": {
+                  "matchOperator": "IS_NOT_ONE_OF",
+                  "matchWildcard": true,
+                  "matchCaseSensitive": false,
+                  "values": [
+                    "LqPassWaf/851.3",
+                    "LqPassWaf/851.3 (it; Categraf)"
+                  ]
+                }
+              },
+              {
+                "name": "path",
+                "options": {
+                  "matchOperator": "DOES_NOT_MATCH_ONE_OF",
+                  "matchCaseSensitive": false,
+                  "normalize": false,
+                  "values": [
+                    "/.well-known/apple-developer-merchantid-domain-association.txt"
+                  ]
+                }
+              },
+              {
+                "name": "fileExtension",
+                "options": {
+                  "matchOperator": "IS_NOT_ONE_OF",
+                  "matchCaseSensitive": false,
+                  "values": [
+                    "js",
+                    "css"
+                  ]
+                }
+              }
+            ],
+            "criteriaMustSatisfy": "all",
+            "comments": ""
+          }
+        ],
+        "behaviors": [],
+        "criteria": [],
+        "criteriaMustSatisfy": "all",
+        "comments": ""
+      },
+      {
+        "name": "SureRoute",
+        "children": [],
+        "behaviors": [
+          {
+            "name": "sureRoute",
+            "options": {
+              "enabled": true,
+              "type": "PERFORMANCE",
+              "toHostStatus": "INCOMING_HH",
+              "raceStatTtl": "30m",
+              "forceSslForward": false,
+              "enableCustomKey": false,
+              "testObjectUrl": "/akamai/sureroute-test-object.html",
+              "srDownloadLinkTitle": ""
+            }
+          }
+        ],
+        "criteria": [
+          {
+            "name": "hostname",
+            "options": {
+              "matchOperator": "IS_ONE_OF",
+              "values": [
+                "m.beautyforever.com",
+                "www.beautyforever.com"
+              ]
+            }
+          }
+        ],
+        "criteriaMustSatisfy": "all",
+        "comments": ""
+      },
+      {
+        "name": "Cache Tag & Page Caching",
+        "children": [
+          {
+            "name": "首页",
+            "children": [
+              {
+                "name": "带指定参数不缓存",
+                "children": [],
+                "behaviors": [
+                  {
+                    "name": "caching",
+                    "options": {
+                      "behavior": "NO_STORE"
+                    }
+                  }
+                ],
+                "criteria": [
+                  {
+                    "name": "queryStringParameter",
+                    "options": {
+                      "escapeValue": false,
+                      "matchCaseSensitiveName": true,
+                      "matchCaseSensitiveValue": true,
+                      "matchOperator": "IS_ONE_OF",
+                      "matchWildcardName": false,
+                      "matchWildcardValue": false,
+                      "parameterName": "akaCache",
+                      "values": [
+                        "nce"
+                      ]
+                    }
+                  }
+                ],
+                "criteriaMustSatisfy": "all",
+                "templateLink": "/platformtoolkit/service/ruletemplate/427325727/1?accountId=F-AC-4891758&gid=230665&ck=24.1",
+                "comments": ""
+              },
+              {
+                "name": "utm_source 缓存",
+                "children": [],
+                "behaviors": [
+                  {
+                    "name": "cacheId",
+                    "options": {
+                      "elements": [
+                        "currency",
+                        "group_id",
+                        "abTest"
+                      ],
+                      "includeValue": true,
+                      "optional": true,
+                      "rule": "INCLUDE_COOKIES"
+                    }
+                  },
+                  {
+                    "name": "cacheId",
+                    "options": {
+                      "elements": [
+                        "utm_source"
+                      ],
+                      "includeValue": true,
+                      "optional": true,
+                      "rule": "INCLUDE_QUERY_PARAMS"
+                    }
+                  }
+                ],
+                "criteria": [
+                  {
+                    "name": "queryStringParameter",
+                    "options": {
+                      "escapeValue": false,
+                      "matchCaseSensitiveName": true,
+                      "matchCaseSensitiveValue": true,
+                      "matchOperator": "IS_ONE_OF",
+                      "matchWildcardName": false,
+                      "matchWildcardValue": false,
+                      "parameterName": "utm_source",
+                      "values": [
+                        "google",
+                        "facebook.com",
+                        "tiktok"
+                      ]
+                    }
+                  }
+                ],
+                "criteriaMustSatisfy": "all",
+                "templateLink": "/platformtoolkit/service/ruletemplate/427325727/1?accountId=F-AC-4891758&gid=230665&ck=24.1",
+                "comments": ""
+              }
+            ],
+            "behaviors": [
+              {
+                "name": "cacheTag",
+                "options": {
+                  "tag": "bf-all"
+                }
+              },
+              {
+                "name": "cacheTag",
+                "options": {
+                  "tag": "bf-home"
+                }
+              },
+              {
+                "name": "caching",
+                "options": {
+                  "behavior": "MAX_AGE",
+                  "mustRevalidate": false,
+                  "ttl": "6h"
+                }
+              },
+              {
+                "name": "cacheId",
+                "options": {
+                  "elements": [
+                    "currency",
+                    "group_id",
+                    "abTest"
+                  ],
+                  "includeValue": true,
+                  "optional": true,
+                  "rule": "INCLUDE_COOKIES"
+                }
+              },
+              {
+                "name": "downstreamCache",
+                "options": {
+                  "behavior": "BUST"
+                }
+              }
+            ],
+            "criteria": [
+              {
+                "name": "path",
+                "options": {
+                  "matchCaseSensitive": false,
+                  "matchOperator": "MATCHES_ONE_OF",
+                  "normalize": false,
+                  "values": [
+                    "/"
+                  ]
+                }
+              }
+            ],
+            "criteriaMustSatisfy": "all",
+            "templateLink": "/platformtoolkit/service/ruletemplate/427325727/1?accountId=F-AC-4891758&gid=230665&ck=24.1",
+            "comments": ""
+          },
+          {
+            "name": "列表&详情页",
+            "children": [
+              {
+                "name": "带指定参数不缓存",
+                "children": [],
+                "behaviors": [
+                  {
+                    "name": "caching",
+                    "options": {
+                      "behavior": "NO_STORE"
+                    }
+                  }
+                ],
+                "criteria": [
+                  {
+                    "name": "queryStringParameter",
+                    "options": {
+                      "escapeValue": false,
+                      "matchCaseSensitiveName": true,
+                      "matchCaseSensitiveValue": true,
+                      "matchOperator": "IS_ONE_OF",
+                      "matchWildcardName": false,
+                      "matchWildcardValue": false,
+                      "parameterName": "akaCache",
+                      "values": [
+                        "nce"
+                      ]
+                    }
+                  }
+                ],
+                "criteriaMustSatisfy": "all",
+                "templateLink": "/platformtoolkit/service/ruletemplate/427325727/1?accountId=F-AC-4891758&gid=230665&ck=24.1",
+                "comments": ""
+              },
+              {
+                "name": "utm_source 缓存",
+                "children": [],
+                "behaviors": [
+                  {
+                    "name": "cacheId",
+                    "options": {
+                      "elements": [
+                        "currency",
+                        "group_id",
+                        "abTest"
+                      ],
+                      "includeValue": true,
+                      "optional": true,
+                      "rule": "INCLUDE_COOKIES"
+                    }
+                  },
+                  {
+                    "name": "cacheId",
+                    "options": {
+                      "elements": [
+                        "gad_source",
+                        "utm_medium",
+                        "utm_campaign",
+                        "utm_content",
+                        "utm_term",
+                        "gclid",
+                        "cx",
+                        "ie",
+                        "cof",
+                        "siteurl",
+                        "msclkid",
+                        "fclid",
+                        "aid",
+                        "campaign_id",
+                        "fbclid",
+                        "rfsn",
+                        "subid",
+                        "rlid",
+                        "sscid",
+                        "track_xid",
+                        "utm_expid",
+                        "utm_referrer",
+                        "wtbap",
+                        "tagtag_uid",
+                        "spm",
+                        "wtbae",
+                        "message_id",
+                        "mobile",
+                        "firstname",
+                        "lastname",
+                        "crm_spm",
+                        "srsltid",
+                        "brid",
+                        "afsrc"
+                      ],
+                      "optional": true,
+                      "rule": "EXCLUDE_QUERY_PARAMS"
+                    }
+                  }
+                ],
+                "criteria": [
+                  {
+                    "name": "fileExtension",
+                    "options": {
+                      "matchCaseSensitive": false,
+                      "matchOperator": "IS_ONE_OF",
+                      "values": [
+                        "html"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "queryStringParameter",
+                    "options": {
+                      "escapeValue": false,
+                      "matchCaseSensitiveName": true,
+                      "matchCaseSensitiveValue": true,
+                      "matchOperator": "IS_ONE_OF",
+                      "matchWildcardName": false,
+                      "matchWildcardValue": false,
+                      "parameterName": "utm_source",
+                      "values": [
+                        "google",
+                        "facebook.com",
+                        "tiktok"
+                      ]
+                    }
+                  }
+                ],
+                "criteriaMustSatisfy": "all",
+                "templateLink": "/platformtoolkit/service/ruletemplate/427325727/1?accountId=F-AC-4891758&gid=230665&ck=24.1",
+                "comments": ""
+              }
+            ],
+            "behaviors": [
+              {
+                "name": "cacheTag",
+                "options": {
+                  "tag": "bf-all"
+                }
+              },
+              {
+                "name": "cacheTag",
+                "options": {
+                  "tag": "bf-listinfo"
+                }
+              },
+              {
+                "name": "caching",
+                "options": {
+                  "behavior": "MAX_AGE",
+                  "mustRevalidate": false,
+                  "ttl": "6h"
+                }
+              },
+              {
+                "name": "cacheId",
+                "options": {
+                  "elements": [
+                    "currency",
+                    "group_id",
+                    "abTest"
+                  ],
+                  "includeValue": true,
+                  "optional": true,
+                  "rule": "INCLUDE_COOKIES"
+                }
+              },
+              {
+                "name": "cacheId",
+                "options": {
+                  "elements": [
+                    "gad_source",
+                    "utm_source",
+                    "utm_medium",
+                    "utm_campaign",
+                    "utm_content",
+                    "utm_term",
+                    "gclid",
+                    "cx",
+                    "ie",
+                    "cof",
+                    "siteurl",
+                    "msclkid",
+                    "fclid",
+                    "aid",
+                    "campaign_id",
+                    "fbclid",
+                    "rfsn",
+                    "subid",
+                    "rlid",
+                    "sscid",
+                    "track_xid",
+                    "utm_expid",
+                    "utm_referrer",
+                    "wtbap",
+                    "tagtag_uid",
+                    "spm",
+                    "wtbae",
+                    "message_id",
+                    "mobile",
+                    "firstname",
+                    "lastname",
+                    "crm_spm",
+                    "srsltid",
+                    "brid",
+                    "afsrc"
+                  ],
+                  "optional": true,
+                  "rule": "EXCLUDE_QUERY_PARAMS"
+                }
+              },
+              {
+                "name": "downstreamCache",
+                "options": {
+                  "behavior": "BUST"
+                }
+              }
+            ],
+            "criteria": [
+              {
+                "name": "fileExtension",
+                "options": {
+                  "matchCaseSensitive": false,
+                  "matchOperator": "IS_ONE_OF",
+                  "values": [
+                    "html"
+                  ]
+                }
+              },
+              {
+                "name": "path",
+                "options": {
+                  "matchOperator": "DOES_NOT_MATCH_ONE_OF",
+                  "matchCaseSensitive": false,
+                  "normalize": false,
+                  "values": [
+                    "/activity/",
+                    "/activity/*",
+                    "/activity-*"
+                  ]
+                }
+              }
+            ],
+            "criteriaMustSatisfy": "all",
+            "templateLink": "/platformtoolkit/service/ruletemplate/427325727/1?accountId=F-AC-4891758&gid=230665&ck=24.1",
+            "comments": ""
+          },
+          {
+            "name": "博客页面",
+            "children": [
+              {
+                "name": "带指定参数不缓存 ",
+                "children": [],
+                "behaviors": [
+                  {
+                    "name": "caching",
+                    "options": {
+                      "behavior": "NO_STORE"
+                    }
+                  }
+                ],
+                "criteria": [
+                  {
+                    "name": "queryStringParameter",
+                    "options": {
+                      "escapeValue": false,
+                      "matchCaseSensitiveName": true,
+                      "matchCaseSensitiveValue": true,
+                      "matchOperator": "IS_ONE_OF",
+                      "matchWildcardName": false,
+                      "matchWildcardValue": false,
+                      "parameterName": "akaCache",
+                      "values": [
+                        "nce"
+                      ]
+                    }
+                  }
+                ],
+                "criteriaMustSatisfy": "all",
+                "templateLink": "/platformtoolkit/service/ruletemplate/427325727/1?accountId=F-AC-4891758&gid=230665&ck=24.1",
+                "comments": ""
+              },
+              {
+                "name": "utm_source 缓存",
+                "children": [],
+                "behaviors": [
+                  {
+                    "name": "cacheId",
+                    "options": {
+                      "elements": [
+                        "currency",
+                        "group_id",
+                        "abTest"
+                      ],
+                      "includeValue": true,
+                      "optional": true,
+                      "rule": "INCLUDE_COOKIES"
+                    }
+                  },
+                  {
+                    "name": "cacheId",
+                    "options": {
+                      "elements": [
+                        "page"
+                      ],
+                      "includeValue": true,
+                      "optional": true,
+                      "rule": "INCLUDE_QUERY_PARAMS"
+                    }
+                  },
+                  {
+                    "name": "cacheId",
+                    "options": {
+                      "elements": [
+                        "utm_source"
+                      ],
+                      "includeValue": true,
+                      "optional": true,
+                      "rule": "INCLUDE_QUERY_PARAMS"
+                    }
+                  }
+                ],
+                "criteria": [
+                  {
+                    "name": "queryStringParameter",
+                    "options": {
+                      "escapeValue": false,
+                      "matchCaseSensitiveName": true,
+                      "matchCaseSensitiveValue": true,
+                      "matchOperator": "IS_ONE_OF",
+                      "matchWildcardName": false,
+                      "matchWildcardValue": false,
+                      "parameterName": "utm_source",
+                      "values": [
+                        "google",
+                        "facebook.com",
+                        "tiktok"
+                      ]
+                    }
+                  }
+                ],
+                "criteriaMustSatisfy": "all",
+                "templateLink": "/platformtoolkit/service/ruletemplate/427325727/1?accountId=F-AC-4891758&gid=230665&ck=24.1",
+                "comments": ""
+              }
+            ],
+            "behaviors": [
+              {
+                "name": "cacheTag",
+                "options": {
+                  "tag": "bf-blog"
+                }
+              },
+              {
+                "name": "caching",
+                "options": {
+                  "behavior": "MAX_AGE",
+                  "mustRevalidate": false,
+                  "ttl": "365d"
+                }
+              },
+              {
+                "name": "cacheId",
+                "options": {
+                  "elements": [
+                    "currency",
+                    "group_id",
+                    "abTest"
+                  ],
+                  "includeValue": true,
+                  "optional": true,
+                  "rule": "INCLUDE_COOKIES"
+                }
+              },
+              {
+                "name": "cacheId",
+                "options": {
+                  "elements": [
+                    "page"
+                  ],
+                  "includeValue": true,
+                  "optional": true,
+                  "rule": "INCLUDE_QUERY_PARAMS"
+                }
+              },
+              {
+                "name": "downstreamCache",
+                "options": {
+                  "behavior": "BUST"
+                }
+              }
+            ],
+            "criteria": [
+              {
+                "name": "path",
+                "options": {
+                  "matchCaseSensitive": false,
+                  "matchOperator": "MATCHES_ONE_OF",
+                  "normalize": false,
+                  "values": [
+                    "/blog/",
+                    "/blog/*",
+                    "/blog"
+                  ]
+                }
+              }
+            ],
+            "criteriaMustSatisfy": "all",
+            "templateLink": "/platformtoolkit/service/ruletemplate/427325727/1?accountId=F-AC-4891758&gid=230665&ck=24.1",
+            "comments": ""
+          },
+          {
+            "name": "活动页",
+            "children": [
+              {
+                "name": "带指定参数不缓存  ",
+                "children": [],
+                "behaviors": [
+                  {
+                    "name": "caching",
+                    "options": {
+                      "behavior": "NO_STORE"
+                    }
+                  }
+                ],
+                "criteria": [
+                  {
+                    "name": "queryStringParameter",
+                    "options": {
+                      "escapeValue": false,
+                      "matchCaseSensitiveName": true,
+                      "matchCaseSensitiveValue": true,
+                      "matchOperator": "IS_ONE_OF",
+                      "matchWildcardName": false,
+                      "matchWildcardValue": false,
+                      "parameterName": "akaCache",
+                      "values": [
+                        "nce"
+                      ]
+                    }
+                  }
+                ],
+                "criteriaMustSatisfy": "all",
+                "templateLink": "/platformtoolkit/service/ruletemplate/427325727/1?accountId=F-AC-4891758&gid=230665&ck=24.1",
+                "comments": ""
+              },
+              {
+                "name": "utm_source 缓存",
+                "children": [],
+                "behaviors": [
+                  {
+                    "name": "cacheId",
+                    "options": {
+                      "elements": [
+                        "currency",
+                        "group_id",
+                        "abTest"
+                      ],
+                      "includeValue": true,
+                      "optional": true,
+                      "rule": "INCLUDE_COOKIES"
+                    }
+                  },
+                  {
+                    "name": "cacheId",
+                    "options": {
+                      "elements": [
+                        "utm_source"
+                      ],
+                      "includeValue": true,
+                      "optional": true,
+                      "rule": "INCLUDE_QUERY_PARAMS"
+                    }
+                  }
+                ],
+                "criteria": [
+                  {
+                    "name": "queryStringParameter",
+                    "options": {
+                      "escapeValue": false,
+                      "matchCaseSensitiveName": true,
+                      "matchCaseSensitiveValue": true,
+                      "matchOperator": "IS_ONE_OF",
+                      "matchWildcardName": false,
+                      "matchWildcardValue": false,
+                      "parameterName": "utm_source",
+                      "values": [
+                        "google",
+                        "facebook.com",
+                        "tiktok"
+                      ]
+                    }
+                  }
+                ],
+                "criteriaMustSatisfy": "all",
+                "templateLink": "/platformtoolkit/service/ruletemplate/427325727/1?accountId=F-AC-4891758&gid=230665&ck=24.1",
+                "comments": ""
+              }
+            ],
+            "behaviors": [
+              {
+                "name": "cacheTag",
+                "options": {
+                  "tag": "bf-all"
+                }
+              },
+              {
+                "name": "cacheTag",
+                "options": {
+                  "tag": "bf-activity"
+                }
+              },
+              {
+                "name": "caching",
+                "options": {
+                  "behavior": "MAX_AGE",
+                  "mustRevalidate": false,
+                  "ttl": "6h"
+                }
+              },
+              {
+                "name": "cacheId",
+                "options": {
+                  "elements": [
+                    "currency",
+                    "group_id",
+                    "abTest"
+                  ],
+                  "includeValue": true,
+                  "optional": true,
+                  "rule": "INCLUDE_COOKIES"
+                }
+              },
+              {
+                "name": "downstreamCache",
+                "options": {
+                  "behavior": "BUST"
+                }
+              }
+            ],
+            "criteria": [
+              {
+                "name": "path",
+                "options": {
+                  "matchCaseSensitive": false,
+                  "matchOperator": "MATCHES_ONE_OF",
+                  "normalize": false,
+                  "values": [
+                    "/activity/",
+                    "/activity/*",
+                    "/activity-*"
+                  ]
+                }
+              }
+            ],
+            "criteriaMustSatisfy": "all",
+            "templateLink": "/platformtoolkit/service/ruletemplate/427325727/1?accountId=F-AC-4891758&gid=230665&ck=24.1",
+            "comments": ""
+          },
+          {
+            "name": "/static/ 缓存一天",
+            "children": [],
+            "behaviors": [
+              {
+                "name": "caching",
+                "options": {
+                  "behavior": "MAX_AGE",
+                  "mustRevalidate": false,
+                  "ttl": "1d"
+                }
+              },
+              {
+                "name": "cacheId",
+                "options": {
+                  "rule": "INCLUDE_QUERY_PARAMS",
+                  "includeValue": true,
+                  "optional": true,
+                  "elements": [
+                    "LT1RVf0XvMD1A78LUGJ2JvcSkHTKq8vb"
+                  ]
+                }
+              }
+            ],
+            "criteria": [
+              {
+                "name": "path",
+                "options": {
+                  "matchOperator": "MATCHES_ONE_OF",
+                  "matchCaseSensitive": false,
+                  "normalize": false,
+                  "values": [
+                    "/static/*"
+                  ]
+                }
+              }
+            ],
+            "criteriaMustSatisfy": "all",
+            "comments": ""
+          }
+        ],
+        "behaviors": [],
+        "criteria": [
+          {
+            "name": "hostname",
+            "options": {
+              "matchOperator": "IS_ONE_OF",
+              "values": [
+                "www.beautyforever.com",
+                "m.beautyforever.com"
+              ]
+            }
+          }
+        ],
+        "criteriaMustSatisfy": "all",
+        "templateLink": "/platformtoolkit/service/ruletemplate/427325727/1?accountId=F-AC-4891758&gid=230665&ck=24.1",
+        "comments": ""
+      },
+      {
+        "name": "Js tag",
+        "children": [
+          {
+            "name": "www.beautyforever.com",
+            "children": [],
+            "behaviors": [
+              {
+                "name": "cacheTag",
+                "options": {
+                  "tag": "bf-www-js"
+                }
+              }
+            ],
+            "criteria": [
+              {
+                "name": "hostname",
+                "options": {
+                  "matchOperator": "IS_ONE_OF",
+                  "values": [
+                    "www.beautyforever.com"
+                  ]
+                }
+              },
+              {
+                "name": "fileExtension",
+                "options": {
+                  "matchOperator": "IS_ONE_OF",
+                  "matchCaseSensitive": false,
+                  "values": [
+                    "js"
+                  ]
+                }
+              }
+            ],
+            "criteriaMustSatisfy": "all",
+            "comments": ""
+          },
+          {
+            "name": "m.beautyforever.com",
+            "children": [],
+            "behaviors": [
+              {
+                "name": "cacheTag",
+                "options": {
+                  "tag": "bf-m-js"
+                }
+              }
+            ],
+            "criteria": [
+              {
+                "name": "hostname",
+                "options": {
+                  "matchOperator": "IS_ONE_OF",
+                  "values": [
+                    "m.beautyforever.com"
+                  ]
+                }
+              },
+              {
+                "name": "fileExtension",
+                "options": {
+                  "matchOperator": "IS_ONE_OF",
+                  "matchCaseSensitive": false,
+                  "values": [
+                    "js"
+                  ]
+                }
+              }
+            ],
+            "criteriaMustSatisfy": "all",
+            "comments": ""
+          }
+        ],
+        "behaviors": [],
+        "criteria": [],
+        "criteriaMustSatisfy": "all",
+        "comments": ""
+      },
+      {
+        "name": "ADV",
+        "children": [],
+        "behaviors": [
+          {
+            "name": "autoDomainValidation",
+            "options": {
+              "autodv": ""
+            }
+          }
+        ],
+        "criteria": [],
+        "criteriaMustSatisfy": "all",
+        "comments": ""
+      },
+      {
+        "name": "XFF",
+        "children": [
+          {
+            "name": "Edge",
+            "children": [],
+            "behaviors": [
+              {
+                "name": "setVariable",
+                "options": {
+                  "valueSource": "EXPRESSION",
+                  "transform": "NONE",
+                  "variableName": "PMUSER_CLIENT_IP",
+                  "variableValue": "{{builtin.AK_CLIENT_REAL_IP}}"
+                }
+              },
+              {
+                "name": "modifyOutgoingRequestHeader",
+                "options": {
+                  "action": "MODIFY",
+                  "standardModifyHeaderName": "OTHER",
+                  "newHeaderValue": "{{user.PMUSER_CLIENT_IP}}",
+                  "avoidDuplicateHeaders": true,
+                  "customHeaderName": "x-authentic-ip"
+                }
+              },
+              {
+                "name": "modifyOutgoingRequestHeader",
+                "options": {
+                  "action": "MODIFY",
+                  "standardModifyHeaderName": "OTHER",
+                  "newHeaderValue": "{{builtin.AK_CLIENT_REAL_IP}}",
+                  "avoidDuplicateHeaders": false,
+                  "customHeaderName": "X-Forwarded-For"
+                }
+              }
+            ],
+            "criteria": [
+              {
+                "name": "requestType",
+                "options": {
+                  "matchOperator": "IS",
+                  "value": "CLIENT_REQ"
+                }
+              }
+            ],
+            "criteriaMustSatisfy": "all",
+            "comments": ""
+          },
+          {
+            "name": "Parent",
+            "children": [],
+            "behaviors": [
+              {
+                "name": "setVariable",
+                "options": {
+                  "valueSource": "EXTRACT",
+                  "transform": "NONE",
+                  "variableName": "PMUSER_CLIENT_IP",
+                  "extractLocation": "CLIENT_REQUEST_HEADER",
+                  "headerName": "x-authentic-ip"
+                }
+              },
+              {
+                "name": "modifyOutgoingRequestHeader",
+                "options": {
+                  "action": "MODIFY",
+                  "standardModifyHeaderName": "OTHER",
+                  "newHeaderValue": "{{user.PMUSER_CLIENT_IP}}",
+                  "avoidDuplicateHeaders": true,
+                  "customHeaderName": "x-forwarded-for"
+                }
+              }
+            ],
+            "criteria": [
+              {
+                "name": "requestType",
+                "options": {
+                  "matchOperator": "IS_NOT",
+                  "value": "CLIENT_REQ"
+                }
+              }
+            ],
+            "criteriaMustSatisfy": "all",
+            "comments": ""
+          }
+        ],
+        "behaviors": [],
+        "criteria": [],
+        "criteriaMustSatisfy": "all",
+        "comments": ""
+      },
+      {
+        "name": "SEO tuning",
+        "children": [
+          {
+            "name": "CP Code for SEO",
+            "children": [],
+            "behaviors": [
+              {
+                "name": "prefetch",
+                "options": {
+                  "enabled": false
+                }
+              },
+              {
+                "name": "mPulse",
+                "options": {
+                  "enabled": false,
+                  "requirePci": false,
+                  "loaderVersion": "V12",
+                  "configOverride": "",
+                  "titleOptional": "",
+                  "apiKey": "",
+                  "bufferSize": ""
+                }
+              },
+              {
+                "name": "cpCode",
+                "options": {
+                  "value": {
+                    "id": 1456313,
+                    "description": "SEO-www.beautyforever.com-m.beautyforever.com",
+                    "products": [
+                      "Fresca"
+                    ],
+                    "createdDate": 1679986649000,
+                    "cpCodeLimits": {
+                      "limit": 100,
+                      "currentCapacity": 89,
+                      "limitType": "global"
+                    },
+                    "name": "SEO-www.beautyforever.com-m.beautyforever.com"
+                  },
+                  "enableDefaultContentProviderCode": false
+                }
+              }
+            ],
+            "criteria": [
+              {
+                "name": "matchVariable",
+                "options": {
+                  "matchOperator": "IS_ONE_OF",
+                  "matchWildcard": false,
+                  "matchCaseSensitive": true,
+                  "variableName": "PMUSER_TRIGGERED_RULES",
+                  "variableValues": [
+                    "3991008",
+                    "*3991008*",
+                    "3991011",
+                    "*3991011*",
+                    "3991006",
+                    "*3991006*"
+                  ]
+                }
+              }
+            ],
+            "criteriaMustSatisfy": "all",
+            "comments": "Bot Rule ID:\n3991006-Web Search Engines\t\n3991008 -Search Engine Optimization (SEO), Audience Analytics or Marketing Services\n3991011-E-Commerce Search Engine\t\n"
+          }
+        ],
+        "behaviors": [
+          {
+            "name": "setVariable",
+            "options": {
+              "valueSource": "EXPRESSION",
+              "transform": "NONE",
+              "variableName": "PMUSER_TRIGGERED_RULES",
+              "variableValue": "{{builtin.AK_FIREWALL_TRIGGERED_RULES}}"
+            }
+          }
+        ],
+        "criteria": [],
+        "criteriaMustSatisfy": "all",
+        "comments": ""
+      },
+      {
+        "name": "timing-allow-origin",
+        "children": [],
+        "behaviors": [
+          {
+            "name": "modifyOutgoingResponseHeader",
+            "options": {
+              "action": "ADD",
+              "standardAddHeaderName": "OTHER",
+              "headerValue": "*",
+              "customHeaderName": "Timing-Allow-Origin"
+            }
+          }
+        ],
+        "criteria": [],
+        "criteriaMustSatisfy": "all",
+        "comments": ""
+      },
+      {
+        "name": "Add DS2",
+        "children": [],
+        "behaviors": [
+          {
+            "name": "datastream",
+            "options": {
+              "streamType": "LOG",
+              "logStreamTitle": "",
+              "logEnabled": true,
+              "logStreamName": [
+                "63654"
+              ],
+              "samplingPercentage": 100,
+              "collectMidgressTraffic": false
+            }
+          }
+        ],
+        "criteria": [],
+        "criteriaMustSatisfy": "all",
+        "comments": ""
+      },
+      {
+        "name": "指定回源请求头",
+        "children": [],
+        "behaviors": [
+          {
+            "name": "modifyOutgoingRequestHeader",
+            "options": {
+              "action": "MODIFY",
+              "standardModifyHeaderName": "OTHER",
+              "newHeaderValue": "akamai-lqhair",
+              "avoidDuplicateHeaders": true,
+              "customHeaderName": "Source-Auth"
+            }
+          }
+        ],
+        "criteria": [],
+        "criteriaMustSatisfy": "all",
+        "comments": ""
+      },
+      {
+        "name": "图片响应头",
+        "children": [],
+        "behaviors": [
+          {
+            "name": "downstreamCache",
+            "options": {
+              "behavior": "ALLOW",
+              "allowBehavior": "FROM_VALUE",
+              "sendHeaders": "CACHE_CONTROL",
+              "sendPrivate": false,
+              "ttl": "365d"
+            }
+          }
+        ],
+        "criteria": [
+          {
+            "name": "fileExtension",
+            "options": {
+              "matchOperator": "IS_ONE_OF",
+              "matchCaseSensitive": false,
+              "values": [
+                "jpg",
+                "jpeg",
+                "png",
+                "gif",
+                "webp",
+                "jp2",
+                "ico",
+                "svg",
+                "svgz"
+              ]
+            }
+          }
+        ],
+        "criteriaMustSatisfy": "all",
+        "comments": ""
+      },
+      {
+        "name": "Advanced",
+        "children": [],
+        "behaviors": [
+          {
+            "name": "advanced",
+            "options": {
+              "description": "",
+              "xml": " <reporting:maprule>a1500.dscr.akamai.net</reporting:maprule>\n\n\n\n<!-- Allow Midgress to FF -->\n<match:region.attribute value=\"network-essl\" result=\"true\">\n  <assign:variable>\n    <name>ALLOW_MIDGRESS_TO_FF</name>\n    <value>yes</value>\n  </assign:variable>\n\n  <reporting:maprule>a1500.dscr.akamai.net</reporting:maprule>\n</match:region.attribute>"
+            },
+            "uuid": "5d11c0b7-cc8e-46da-8f46-b361f6767686"
+          }
+        ],
+        "uuid": "33b2d35a-3456-4b8e-88c9-b957122df247",
+        "criteria": [],
+        "criteriaMustSatisfy": "all",
+        "comments": ""
+      }
+    ],
+    "behaviors": [
+      {
+        "name": "origin",
+        "options": {
+          "cacheKeyHostname": "REQUEST_HOST_HEADER",
+          "compress": true,
+          "enableTrueClientIp": true,
+          "forwardHostHeader": "REQUEST_HOST_HEADER",
+          "httpPort": 80,
+          "httpsPort": 443,
+          "originCertificate": "",
+          "originSni": true,
+          "originType": "CUSTOMER",
+          "ports": "",
+          "trueClientIpClientSetting": false,
+          "trueClientIpHeader": "True-Client-IP",
+          "verificationMode": "CUSTOM",
+          "hostname": "lq-bf-nuxt-1212474737.us-east-2.elb.amazonaws.com",
+          "customValidCnValues": [
+            "{{Origin Hostname}}",
+            "{{Forward Host Header}}"
+          ],
+          "originCertsToHonor": "COMBO",
+          "standardCertificateAuthorities": [
+            "akamai-permissive",
+            "THIRD_PARTY_AMAZON"
+          ],
+          "ipVersion": "IPV4",
+          "minTlsVersion": "DYNAMIC",
+          "tlsVersionTitle": "",
+          "customCertificateAuthorities": [],
+          "customCertificates": [],
+          "useUniqueCacheKey": false
+        }
+      },
+      {
+        "name": "cpCode",
+        "options": {
+          "value": {
+            "id": 1435979,
+            "description": "m.beautyforever.com-Ion",
+            "products": [
+              "Fresca"
+            ],
+            "createdDate": 1675929676000,
+            "cpCodeLimits": null,
+            "name": "m.beautyforever.com-Ion"
+          },
+          "enableDefaultContentProviderCode": false
+        }
+      }
+    ],
+    "uuid": "default",
+    "options": {
+      "is_secure": true
+    },
+    "variables": [
+      {
+        "name": "PMUSER_FINGERPRINTVAL",
+        "value": "",
+        "description": "",
+        "hidden": false,
+        "sensitive": false
+      },
+      {
+        "name": "PMUSER_TRIGGERED_RULES",
+        "value": "",
+        "description": "",
+        "hidden": true,
+        "sensitive": false
+      },
+      {
+        "name": "PMUSER_CLIENT_IP",
+        "value": "",
+        "description": "",
+        "hidden": false,
+        "sensitive": false
+      }
+    ],
+    "comments": "The Default Rule template contains all the necessary and recommended behaviors. Rules are evaluated from top to bottom and the last matching rule wins."
+  },
+  "warnings": [
+    {
+      "type": "https://problems.luna.akamaiapis.net/papi/v0/validation/validation_message.ssl_custom_warning_test_staging",
+      "errorLocation": "#/rules/behaviors/0",
+      "detail": "If you are changing your `Origin Server` SSL Certificate Verification settings it is strongly recommended that you test on Staging before activating on Production. Failure to test on Staging may result in a service outage."
+    },
+    {
+      "type": "https://problems.luna.akamaiapis.net/papi/v0/validation/validation_message.cookies_logging_not_recommended",
+      "errorLocation": "#/rules/children/0/children/1/behaviors/1",
+      "detail": "Enabling cookie logging can lead to instances of PII or other PCI data being saved to logs in plain text. We do not recommend saving all cookies, however you may still add selected cookies you determine to be safe to save."
+    },
+    {
+      "type": "https://problems.luna.akamaiapis.net/papi/v0/validation/validation_message.http3_enabled_warning_reuse",
+      "errorLocation": "#/rules/children/1/children/1/behaviors/3",
+      "detail": "HTTP/3 connection reuse lets clients re-use an open connection for any domain included in your certificate, even if these domains point to different origins. Most browsers will perform a DNS query to ensure there's an overlap in the domain's IP before reusing the connection. If you're using multiple certificates, specifically both Standard TLS and Enhanced TLS, don't include the same domain across them. If you do, an HTTP request to the domain that requires Enhanced TLS could be resolved using the less secure Standard TLS certificate, and vice-versa."
+    },
+    {
+      "type": "https://problems.luna.akamaiapis.net/papi/v0/validation/validation_message.ssl_custom_warning_test_staging",
+      "errorLocation": "#/rules/children/6/children/0/behaviors/0",
+      "detail": "If you are changing your `Origin Server` SSL Certificate Verification settings it is strongly recommended that you test on Staging before activating on Production. Failure to test on Staging may result in a service outage."
+    },
+    {
+      "type": "https://problems.luna.akamaiapis.net/papi/v0/validation/validation_message.ssl_custom_warning_test_staging",
+      "errorLocation": "#/rules/children/6/children/1/behaviors/0",
+      "detail": "If you are changing your `Origin Server` SSL Certificate Verification settings it is strongly recommended that you test on Staging before activating on Production. Failure to test on Staging may result in a service outage."
+    },
+    {
+      "type": "https://problems.luna.akamaiapis.net/papi/v0/validation/validation_message.general_warning",
+      "errorLocation": "#/rules/children/7/children/0/criteria/1",
+      "detail": "Matching on `Request Type` requires thorough understanding of the way Akamai Edge servers process requests.  If you are unsure about how this will affect your property, please contact your Akamai Technical representative, and please test thoroughly on staging before activating on production."
+    },
+    {
+      "type": "https://problems.luna.akamaiapis.net/papi/v0/validation/need_feature",
+      "errorLocation": "#/rules/children/7/children/1/criteria/1",
+      "detail": "When you're modifying the content returned to the user based on `Device Characteristics`, you should use the Modify Outgoing Response Header behavior to add a Vary: User-Agent header to the response."
+    },
+    {
+      "type": "https://problems.luna.akamaiapis.net/papi/v0/validation/need_feature",
+      "errorLocation": "#/rules/children/7/children/2/criteria/1",
+      "detail": "When you're modifying the content returned to the user based on `Device Characteristics`, you should use the Modify Outgoing Response Header behavior to add a Vary: User-Agent header to the response."
+    },
+    {
+      "type": "https://problems.luna.akamaiapis.net/papi/v0/validation/validation_message.general_warning",
+      "errorLocation": "#/rules/children/12/children/0/criteria/0",
+      "detail": "Matching on `Request Type` requires thorough understanding of the way Akamai Edge servers process requests.  If you are unsure about how this will affect your property, please contact your Akamai Technical representative, and please test thoroughly on staging before activating on production."
+    },
+    {
+      "type": "https://problems.luna.akamaiapis.net/papi/v0/validation/validation_message.general_warning",
+      "errorLocation": "#/rules/children/12/children/1/criteria/0",
+      "detail": "Matching on `Request Type` requires thorough understanding of the way Akamai Edge servers process requests.  If you are unsure about how this will affect your property, please contact your Akamai Technical representative, and please test thoroughly on staging before activating on production."
+    }
+  ],
+  "ruleFormat": "latest",
+  "comments": "essl to ff update reporting maprule"
+}

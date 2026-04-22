@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>模块 32 · Domain api.beautyforever.com — Akamai · beautyforever.com</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./assets/style.css" />
+</head>
+<body>
+<nav class="topnav">
+  <div class="brand"><span class="dot">●</span> Akamai · beautyforever.com</div>
+  <div class="nav-links">
+    <a href="./index.html">Home</a>
+    <a href="./00-account.html">00 Account</a>
+    <a href="./10-property-essl.html">10 Property ESSL</a>
+    <a href="./11-property-api.html">11 Property API</a>
+    <a href="./20-waf.html">20 WAF</a>
+    <a href="./30-domain-www.html">30 Domain www</a>
+    <a href="./31-domain-m.html">31 Domain m</a>
+    <a href="./32-domain-api.html" class="active">32 Domain api</a>
+    <a href="./40-ops-verification.html">40 Ops Verify</a>
+    <a href="./90-dynamic-static.html">90 Dyn/Static</a>
+    <a href="./99-queries.html">99 Queries</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="hero-inner">
+    <span class="hero-badge">Module 32 · Domain api.beautyforever.com</span>
+    <h1>Domain · <span class="accent">api.beautyforever.com</span></h1>
+    <p class="subtitle">单域名穿透视图。把 DNS/TLS 入口、Property、回源、缓存、跳转、加速、可用性、WAF、响应头、回源头、动静态判定一体呈现。详细配置散见于 <a href="./11-property-api.html">模块 11 · Property API</a> 与 <a href="./20-waf.html">模块 20 · WAF</a>。</p>
+    <div class="meta">
+      <span><strong>Property</strong> <code>api.beautyforever.com</code> v10</span>
+      <span><strong>WAF Policy</strong> <code>Policy Api</code> (0124_243504)</span>
+      <span><strong>动静态判定</strong> <strong style="color:var(--warn)">纯动态</strong></span>
+      <span><strong>Origin</strong> AWS ALB · us-east-2</span>
+      <span><strong>采集日期</strong> 2026-04-21</span>
+    </div>
+  </div>
+</header>
+
+<main class="container">
+
+  <div style="background: var(--warn-dim); border: 1px solid var(--warn); border-radius: 8px; padding: 16px 20px; margin-bottom: 28px;">
+    <div style="color: var(--warn); font-weight: 700; font-size: var(--heading-size); margin-bottom: 8px;">⚠ 2026-04-21 Live Audit · Staging v11 HSTS 待上生产</div>
+    <div style="color: var(--text-primary); font-size: var(--body-size); line-height: 1.6;">
+      Property <code>api.beautyforever.com</code> staging/latest = v11，新增 HSTS（<code>maxAge=TWO_YEARS, includeSubDomains=true, preload=true, redirect=false</code>），<strong>尚未到生产</strong>。
+      生产仍为 v10，与 raw 字节级一致。
+    </div>
+  </div>
+
+  <div class="toc">
+    <h3>Table of Contents</h3>
+    <ul>
+      <li><a href="#dns-tls">§1 DNS / TLS 入口</a></li>
+      <li><a href="#property">§2 所属 Property（CDN）</a></li>
+      <li><a href="#origin">§3 回源</a></li>
+      <li><a href="#cache">§4 缓存策略</a></li>
+      <li><a href="#redirect">§5 跳转规则</a></li>
+      <li><a href="#accel">§6 加速能力</a></li>
+      <li><a href="#availability">§7 可用性（⚠ 故障注入）</a></li>
+      <li><a href="#waf">§8 安全（WAF）</a></li>
+      <li><a href="#resp-hdr">§9 CDN 层响应头修改</a></li>
+      <li><a href="#req-hdr">§10 回源请求头</a></li>
+      <li><a href="#verdict">§11 动静态判定</a></li>
+      <li><a href="#next">§12 Team Agent 后续可挖</a></li>
+    </ul>
+  </div>
+
+  <div class="callout">
+    <strong>范围</strong>：本文件是 <code>api.beautyforever.com</code> 的<strong>单域名穿透视图</strong>——把分散在
+    <a href="./11-property-api.html"><code>11-property-api.html</code></a> 与
+    <a href="./20-waf.html"><code>20-waf.html</code></a> 的配置聚合为一个域名维度的展示。
+    重点标注 <strong>双重 NO_STORE 兜底</strong>、<code>breakConnection: enabled=true</code> 故障注入、
+    以及 XFF header <code>" x-authentic-ip"</code> 的<strong>前导空格 bug</strong>。
+  </div>
+
+  <!-- ============ §1 DNS / TLS 入口 ============ -->
+  <section id="dns-tls">
+    <h2><span class="chapter-num">§1</span> DNS / TLS 入口</h2>
+    <p class="section-intro">客户域名如何进入 Akamai 边缘——CNAME 指向 Edge Hostname、TLS 类型、证书管理方式、以及 Edge Hostname 的内部 ID。</p>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">API-DOM-1</span>Hostname → Edge Hostname 映射</div>
+        <span class="badge info">Ingress</span>
+      </div>
+      <div class="rule-body">
+        <table class="tbl">
+          <thead><tr><th>字段</th><th>值</th></tr></thead>
+          <tbody>
+            <tr><td>Hostname</td><td><code>api.beautyforever.com</code></td></tr>
+            <tr><td>CNAME 到 Edge Hostname</td><td><strong><code>api.beautyforever.com.edgekey.net</code></strong></td></tr>
+            <tr><td>TLS 类型</td><td>Enhanced TLS（ESSL）</td></tr>
+            <tr><td>证书</td><td>CPS-Managed</td></tr>
+            <tr><td>Edge Hostname ID</td><td><code>ehn_5406989</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ §2 Property ============ -->
+  <section id="property">
+    <h2><span class="chapter-num">§2</span> 所属 Property（CDN）</h2>
+    <p class="section-intro">承载 <code>api.beautyforever.com</code> 的 Property 基本信息——与 <code>www/m</code> 共享的 essl Property <strong>不同</strong>，API 域独占一个 Property。</p>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">API-DOM-2</span>Property 身份</div>
+        <span class="badge pass">Prod v10</span>
+      </div>
+      <div class="rule-body">
+        <table class="tbl">
+          <thead><tr><th>字段</th><th>值</th></tr></thead>
+          <tbody>
+            <tr><td>Property</td><td><code>api.beautyforever.com</code></td></tr>
+            <tr><td>Property ID</td><td><code>prp_956325</code></td></tr>
+            <tr><td>Production Version</td><td><strong>10</strong></td></tr>
+            <tr><td>Product</td><td>Fresca (Ion)</td></tr>
+            <tr><td>Hostnames on Property</td><td>仅 <code>api.beautyforever.com</code>（独占一个 Property）</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ §3 回源 ============ -->
+  <section id="origin">
+    <h2><span class="chapter-num">§3</span> 回源</h2>
+    <p class="section-intro">源站指向 AWS 俄亥俄（us-east-2）的独立 ALB——与 <code>www/m</code> 的 Nuxt ALB 解耦，职责清晰。</p>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">API-DOM-3</span>Origin Server 参数</div>
+        <span class="badge info">Origin</span>
+      </div>
+      <div class="rule-body">
+        <ul>
+          <li><strong>Origin：</strong> <code>lq-bf-api-1432573287.us-east-2.elb.amazonaws.com</code>（AWS ALB，us-east-2）</li>
+          <li>后端：API 服务（与 <code>www/m</code> 的 Nuxt ALB 解耦）</li>
+          <li>透传 Host 头、Origin SNI、HTTPS 443</li>
+          <li>True-Client-IP：<code>True-Client-IP</code></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ §4 缓存策略 ============ -->
+  <section id="cache">
+    <h2><span class="chapter-num">§4</span> 缓存策略</h2>
+    <p class="section-intro">API 场景下默认 <strong>NO_STORE</strong>，且 <strong>Sureroute&amp;Caching 子规则再次强制 NO_STORE</strong> 兜底——典型的"双保险"，基本不存在意外命中。</p>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">API-DOM-4</span>双重 NO_STORE 兜底（API 域）</div>
+        <span class="badge warn">双保险</span>
+      </div>
+      <div class="rule-body">
+        <div class="callout">
+          <strong>双重 NO_STORE 是什么？</strong>
+          第一层在 <strong>Offload origin</strong> 默认行为里把 <code>caching.behavior = NO_STORE</code>；
+          第二层在 <strong>Sureroute&amp;Caching</strong> 子规则里再次下发 <code>caching.behavior = NO_STORE</code>。
+          两层兜底意味着即便有人改了上层的 catchall 规则，下层 Sureroute&amp;Caching 也会把 API 默认拉回不缓存——
+          这是 Akamai 针对 API 域常见的防御式配置。
+        </div>
+        <table class="tbl">
+          <thead><tr><th>情形</th><th>TTL</th></tr></thead>
+          <tbody>
+            <tr><td><strong>默认</strong></td><td><strong>NO_STORE</strong></td></tr>
+            <tr><td><code>ext=css/js</code></td><td>365d</td></tr>
+            <tr><td><code>ext=jpg/png/webp/gif/svg/...</code></td><td><strong>30d</strong>（比主站短）</td></tr>
+            <tr><td><code>ext=woff/woff2/otf/ttf/eot</code></td><td>365d</td></tr>
+            <tr><td><code>ext=pdf/doc/docx/odt</code></td><td>7d</td></tr>
+            <tr><td><code>ext=avi/mp3/swf/zip/...</code></td><td>7d</td></tr>
+            <tr><td><code>ext=html/.htm/.php/.jsp/.aspx</code></td><td>1d</td></tr>
+            <tr><td><code>Uncacheable objects</code></td><td>downstreamCache=BUST</td></tr>
+          </tbody>
+        </table>
+        <div class="callout">
+          以上扩展名规则对 API 请求<strong>几乎全部不命中</strong>；实际运行时就是走默认 NO_STORE 回源。
+        </div>
+      </div>
+    </div>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">API-DOM-4b</span>如有 API 响应被源站标记为 cacheable</div>
+        <span class="badge info">Cache Key 补充</span>
+      </div>
+      <div class="rule-body">
+        <p>若有 API 响应被源站标记为 cacheable（如商品目录接口），Cache Key 额外包含：</p>
+        <ul>
+          <li>Cookie：<code>customer_group</code>、<code>currency</code></li>
+          <li>Query string：剔除广告追踪参数 <code>gclid</code>、<code>utm_*</code>、<code>msclkid</code>、<code>fbclid</code>、<code>fclid</code>、<code>rlid</code>、<code>rfsn</code>、<code>subid</code>、<code>sscid</code>、<code>utm_expid</code>、<code>utm_referrer</code>、<code>mc_cid</code>、<code>mc_eid</code>、<code>wbraid</code>、<code>gbraid</code>、<code>irclickid</code>、<code>irpid</code>、<code>irmpname</code>、<code>cjevent</code>、…（完整列表见 raw JSON）</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ §5 跳转规则 ============ -->
+  <section id="redirect">
+    <h2><span class="chapter-num">§5</span> 跳转规则</h2>
+    <p class="section-intro">API 域不参与 PC/Mobile 互跳，跳转逻辑相对简单。</p>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">API-DOM-5</span>HTTP → HTTPS 强跳</div>
+        <span class="badge pass">Simple</span>
+      </div>
+      <div class="rule-body">
+        <ul>
+          <li>HTTP → HTTPS 301（仅 <code>requestType=CLIENT_REQ</code>）</li>
+          <li>无 PC/Mobile 互跳（API 不涉及）</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ §6 加速能力 ============ -->
+  <section id="accel">
+    <h2><span class="chapter-num">§6</span> 加速能力</h2>
+    <p class="section-intro">Ion 产品标配加速组件——即便 API 是纯动态，SureRoute / Tiered Distribution / HTTP/3 依然对短连接建立、TLS 握手、抖动有明显帮助。</p>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">API-DOM-6</span>加速组件一览</div>
+        <span class="badge info">Ion features</span>
+      </div>
+      <div class="rule-body">
+        <ul>
+          <li>SureRoute（PERFORMANCE）</li>
+          <li>Tiered Distribution</li>
+          <li>HTTP/2、HTTP/3</li>
+          <li>Adaptive Acceleration（Push / Preconnect / Preload，源 mPulse）</li>
+          <li>gzip ALWAYS</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ §7 可用性 ============ -->
+  <section id="availability">
+    <h2><span class="chapter-num">§7</span> 可用性（⚠ 故障注入）</h2>
+    <p class="section-intro">Site Failover 关闭，但生产版本里<strong>开着 <code>breakConnection</code> 故障演练行为</strong>——迁移时必须先搞清楚触发条件，避免误伤生产流量。</p>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">API-DOM-7</span>⚠ <code>breakConnection: enabled=true</code> 故障演练</div>
+        <span class="badge pending">高风险 · 待业务确认</span>
+      </div>
+      <div class="rule-body">
+        <div class="callout warn">
+          <strong>⚠ 风险告警：</strong>
+          Site Failover 已关闭，但 Property v10 的 <code>Simulate failover</code> 分支下
+          <strong><code>breakConnection: enabled=true</code></strong> —— <strong>生产版本里开着</strong>故障演练行为。
+          满足特定条件时 Edge 会<strong>主动断开客户端连接</strong>。
+          <ul>
+            <li>需要业务侧确认：是演练残留还是刻意保留</li>
+            <li>迁移到 AWS 时建议<strong>先关闭</strong>，或把触发条件（<code>Simulate failover</code> 分支内的 criteria）逐项拉出定义清楚</li>
+            <li>若保留，需要在 CloudFront 层用 Lambda@Edge / CloudFront Function 主动断链（CloudFront 原生无此开关）</li>
+          </ul>
+        </div>
+        <table class="tbl">
+          <thead><tr><th>字段</th><th>值</th></tr></thead>
+          <tbody>
+            <tr><td>Site Failover</td><td>关闭</td></tr>
+            <tr><td><code>breakConnection.enabled</code></td><td><strong style="color:var(--warn)">true</strong>（生产版本）</td></tr>
+            <tr><td>分支路径</td><td><code>Simulate failover</code></td></tr>
+            <tr><td>触发条件</td><td>详见 raw/api_rules.json（Simulate failover 节点 criteria）</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ §8 WAF ============ -->
+  <section id="waf">
+    <h2><span class="chapter-num">§8</span> 安全（WAF）</h2>
+    <p class="section-intro">与 <code>www/m</code> 的 <code>Policy Deny</code> <strong>不同</strong>——API 域单独绑定 <code>Policy Api</code>。详见 <a href="./20-waf.html">模块 20 · WAF</a>。</p>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">API-DOM-8</span>WAF 绑定</div>
+        <span class="badge info">Policy Api</span>
+      </div>
+      <div class="rule-body">
+        <table class="tbl">
+          <thead><tr><th>字段</th><th>值</th></tr></thead>
+          <tbody>
+            <tr><td>WAF Config</td><td><code>Security Configuration</code> (id 89613) v145</td></tr>
+            <tr><td>Match Target</td><td>sequence 3 (id 7384226)</td></tr>
+            <tr><td><strong>Policy</strong></td><td><strong><code>Policy Api</code> (<code>0124_243504</code>)</strong></td></tr>
+            <tr><td>Bypass Network List</td><td>无</td></tr>
+            <tr><td>启用控件</td><td>WAF rules、Bot Manager、Network、Rate Control、Slow POST</td></tr>
+          </tbody>
+        </table>
+        <div class="callout">
+          API 策略与 Web（Policy Deny）不同；通常 API 策略更倾向于：JSON/XML schema validation、rate control、abuse detection。
+          具体规则差异需要 Team Agent 用 <code>akamai appsec attack-group --policy-id 0124_243504</code> 继续拉。
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ §9 响应头 ============ -->
+  <section id="resp-hdr">
+    <h2><span class="chapter-num">§9</span> CDN 层响应头修改</h2>
+    <p class="section-intro">Edge 层对出站响应头的剥离与补充——和 <code>www/m</code> 保持一致。</p>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">API-DOM-9</span>响应头调整</div>
+        <span class="badge info">Outgoing</span>
+      </div>
+      <div class="rule-body">
+        <ul>
+          <li>删响应头：<code>X-Powered-By</code>、<code>Server</code></li>
+          <li>加：<code>Timing-Allow-Origin: *</code></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ §10 回源请求头 ============ -->
+  <section id="req-hdr">
+    <h2><span class="chapter-num">§10</span> 回源请求头</h2>
+    <p class="section-intro">Edge 向 Origin 注入的请求头——<strong>有一个几乎必然是 bug 的 header name 前导空格</strong>，迁移时需修正。</p>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">API-DOM-10</span>⚠ XFF header <code>" x-authentic-ip"</code> 前导空格 bug</div>
+        <span class="badge pending">Bug · 迁移时必修</span>
+      </div>
+      <div class="rule-body">
+        <div class="callout warn">
+          <strong>⚠ 强警示：几乎必然是 bug</strong><br>
+          <code>PMUSER_CLIENT_IP</code> 的 Parent 层 extract 指定从请求头
+          <code>" x-authentic-ip"</code>（<strong>注意前导有一个空格</strong>）提取。
+          <strong>HTTP 规范（RFC 7230）不允许 header name 有前导空白</strong>，任何符合规范的 HTTP stack 都不会用这个带空格的 key 去写请求头，
+          所以 <code>PMUSER_CLIENT_IP</code> 的取值<strong>永远为空</strong>。
+          <br><br>
+          <strong>迁移时顺手修成</strong> <code>x-authentic-ip</code>（无空格）。
+          在 CloudFront 侧若保留同等语义，应在 CloudFront Function / Lambda@Edge 里显式使用无空格的 header name。
+        </div>
+        <p>完整回源请求头行为：</p>
+        <ul>
+          <li>透传 <code>True-Client-IP</code></li>
+          <li><strong>⚠ 注意</strong> <code>PMUSER_CLIENT_IP</code> 的 Parent 层 extract 指定从请求头 <code>" x-authentic-ip"</code>（<strong>前导空格</strong>）提取 —— HTTP 规范不允许 header name 有前导空白，<strong>几乎必然是 bug</strong>，取值永远为空。迁移时顺手修成 <code>x-authentic-ip</code>。</li>
+          <li><code>modifyOutgoingRequestHeader</code> 自定义头（值见 raw JSON）</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ §11 动静态判定 ============ -->
+  <section id="verdict">
+    <h2><span class="chapter-num">§11</span> 动静态判定</h2>
+    <p class="section-intro">最终结论——<strong>纯动态</strong>。详细动静态分析见 <a href="./90-dynamic-static.html">模块 90</a>。</p>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">API-DOM-11</span>结论：纯动态</div>
+        <span class="badge warn">纯动态</span>
+      </div>
+      <div class="rule-body">
+        <div class="callout warn">
+          <strong>类型：纯动态。</strong>详见 <a href="./90-dynamic-static.html">90-dynamic-static.html</a>。
+        </div>
+        <ul>
+          <li>默认 NO_STORE + Sureroute&amp;Caching 双重 NO_STORE → <strong>所有 API 请求默认回源</strong></li>
+          <li>缓存仅在源站 <code>Cache-Control: public, max-age=…</code> 明确允许时才生效</li>
+          <li>即便可缓存，也按 <code>customer_group</code>、<code>currency</code> cookie 拆版本 → 缓存命中率天然受限</li>
+          <li>广告追踪参数已剔除出 cache key → 拆版本污染被最小化</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ §12 后续可挖 ============ -->
+  <section id="next">
+    <h2><span class="chapter-num">§12</span> Team Agent 后续可挖</h2>
+    <p class="section-intro">本次一手采集已覆盖主干；下列方向还值得 Team Agent 继续深挖。</p>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">API-DOM-12</span>后续深挖清单（7 项）</div>
+        <span class="badge info">Backlog</span>
+      </div>
+      <div class="rule-body">
+        <ol>
+          <li>源站 API 响应的 <code>Cache-Control</code> 头分布：是否有 <code>public</code> 的 GET 接口（商品列表、分类树等）</li>
+          <li><code>raw/api_rules.json</code> 中 <code>Strengthen security</code> 的 4 条子规则（除 allowPost / 删 header 外还有 2 条未列）</li>
+          <li><code>raw/api_rules.json</code> 中 <code>Augment insights</code> 的 4 条子规则（日志 &amp; 变量）</li>
+          <li><code>breakConnection: enabled=true</code> 的触发条件（Simulate failover 节点内的 criteria）</li>
+          <li>WAF <code>Policy Api</code> 的 attack group 配置、rate policies、bot categories</li>
+          <li>API 的限流策略（Rate Control 阈值）</li>
+          <li><strong>修 header bug：</strong> <code>" x-authentic-ip"</code> → <code>"x-authentic-ip"</code></li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <div>
+    Akamai 配置调研 · beautyforever.com · 2026-04-21<br>
+    源文档：<code>../doc/32-domain-api-beautyforever-com.md</code> · 原始 JSON：<code>../raw/*.json</code> · Keith · AWS Solutions Architect
+  </div>
+</footer>
+
+<script src="./assets/app.js" defer></script>
+
+</body>
+</html>

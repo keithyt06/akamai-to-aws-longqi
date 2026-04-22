@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>模块 31 · Domain m.beautyforever.com — Akamai · beautyforever.com</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./assets/style.css" />
+</head>
+<body>
+<nav class="topnav">
+  <div class="brand"><span class="dot">●</span> Akamai · beautyforever.com</div>
+  <div class="nav-links">
+    <a href="./index.html">Home</a>
+    <a href="./00-account.html">00 Account</a>
+    <a href="./10-property-essl.html">10 Property ESSL</a>
+    <a href="./11-property-api.html">11 Property API</a>
+    <a href="./20-waf.html">20 WAF</a>
+    <a href="./30-domain-www.html">30 Domain www</a>
+    <a href="./31-domain-m.html" class="active">31 Domain m</a>
+    <a href="./32-domain-api.html">32 Domain api</a>
+    <a href="./40-ops-verification.html">40 Ops Verify</a>
+    <a href="./90-dynamic-static.html">90 Dyn/Static</a>
+    <a href="./99-queries.html">99 Queries</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="hero-inner">
+    <span class="hero-badge">Module 31 · Domain m.beautyforever.com</span>
+    <h1>Domain · <span class="accent">m.beautyforever.com</span></h1>
+    <p class="subtitle">单域名穿透视图。<code>m.beautyforever.com</code> 与 <code>www.beautyforever.com</code> <strong>共享同一个 Property</strong>，规则完全一致，差异仅在 UA 触发的 PC/M 互跳以及 CP Code。</p>
+    <div class="meta">
+      <span><strong>Property</strong> <code>beautyforever.com_essl</code> v62（共享 www）</span>
+      <span><strong>CP Code</strong> <code>1435979</code></span>
+      <span><strong>WAF Policy</strong> <code>Policy Deny</code></span>
+      <span><strong>采集日期</strong> 2026-04-21</span>
+    </div>
+  </div>
+</header>
+
+<main class="container">
+
+  <div style="background: var(--warn-dim); border: 1px solid var(--warn); border-radius: 8px; padding: 16px 20px; margin-bottom: 28px;">
+    <div style="color: var(--warn); font-weight: 700; font-size: var(--heading-size); margin-bottom: 8px;">⚠ 2026-04-21 Live Audit</div>
+    <div style="color: var(--text-primary); font-size: var(--body-size); line-height: 1.6;">
+      ① Bypass Network List <code>146351_SECURITYBYPASSLIST</code> 实际为空（<code>elementCount=0</code>）。<br>
+      ② 当天新增的 ASN 202425 拦截规则（Custom Rule id <code>60383229</code>）<strong>只匹配 www.beautyforever.com，不影响 m</strong>。<br>
+      ③ 与 www 共享 essl v63 HSTS 改动，<strong>尚未到生产</strong>。
+    </div>
+  </div>
+
+  <div class="toc">
+    <h3>Table of Contents</h3>
+    <ul>
+      <li><a href="#dns-tls">§1 DNS / TLS 入口</a></li>
+      <li><a href="#property">§2 所属 Property (CDN) — <strong>CP Code 1435979</strong></a></li>
+      <li><a href="#origin">§3 回源</a></li>
+      <li><a href="#cache">§4 缓存策略（共享 www）</a></li>
+      <li><a href="#redirect">§5 跳转 &amp; 分流规则（含 Apple Pay 白名单）</a></li>
+      <li><a href="#accel">§6 加速能力</a></li>
+      <li><a href="#waf">§7 安全 (WAF)</a></li>
+      <li><a href="#resp-headers">§8 CDN 层响应头修改</a></li>
+      <li><a href="#origin-headers">§9 回源请求头</a></li>
+      <li><a href="#dyn-static">§10 动静态判定</a></li>
+      <li><a href="#team-agent">§11 Team Agent 后续可挖</a></li>
+    </ul>
+  </div>
+
+  <div class="callout">
+    <strong>范围</strong>：本文件覆盖 <code>31-domain-m-beautyforever-com.md</code>。
+    <code>m.beautyforever.com</code> 与 <code>www.beautyforever.com</code> <strong>共享同一个 Property</strong>（<code>beautyforever.com_essl</code>），
+    规则 100% 一致，差异仅在 UA 触发的 PC/M 互跳与 <strong>CP Code</strong>。详细配置见：
+    <a href="./10-property-essl.html">10 Property ESSL</a>、<a href="./20-waf.html">20 WAF</a>。
+    同源视图：<a href="./30-domain-www.html">30 Domain www</a>。
+  </div>
+
+  <!-- ============ §1 DNS / TLS ============ -->
+  <section id="dns-tls">
+    <h2><span class="chapter-num">§1</span> DNS / TLS 入口</h2>
+    <table class="tbl">
+      <thead>
+        <tr><th>字段</th><th>值</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Hostname</td><td><code>m.beautyforever.com</code></td></tr>
+        <tr><td>CNAME 到 Edge Hostname</td><td><strong><code>beautyforever.com.edgekey.net</code></strong>（与 www 共用）</td></tr>
+        <tr><td>TLS 类型</td><td>Enhanced TLS（ESSL）</td></tr>
+        <tr><td>证书</td><td>CPS-Managed</td></tr>
+        <tr><td>Edge Hostname ID</td><td><code>ehn_5327863</code></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ============ §2 Property ============ -->
+  <section id="property">
+    <h2><span class="chapter-num">§2</span> 所属 Property（CDN）</h2>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">M-2</span>共享 Property + m 专属 CP Code</div>
+        <span class="badge info">差异点</span>
+      </div>
+      <div class="rule-body">
+        <table class="tbl">
+          <thead>
+            <tr><th>字段</th><th>值</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Property</td><td><code>beautyforever.com_essl</code></td></tr>
+            <tr><td>Property ID</td><td><code>prp_910841</code></td></tr>
+            <tr><td>Production Version</td><td><strong>62</strong></td></tr>
+            <tr><td>Product</td><td>Fresca (Ion)</td></tr>
+            <tr><td>与同 Property 共享的域名</td><td><code>www.beautyforever.com</code></td></tr>
+            <tr><td><strong>CP Code（m 专属）</strong></td><td><strong><code>1435979</code></strong>（<code>m.beautyforever.com-Ion</code>）—— 通过 <code>Hostnames</code> 父规则下 m 分支覆盖顶层默认</td></tr>
+          </tbody>
+        </table>
+        <div class="callout warn">
+          <strong>⚠ 关键差异：CP Code 1435977 vs 1435979</strong>
+          <ul>
+            <li><strong>www</strong> 走 CP Code <code>1435977</code>（<code>www.beautyforever.com-Ion</code>）</li>
+            <li><strong>m</strong> 走 CP Code <code>1435979</code>（<code>m.beautyforever.com-Ion</code>）</li>
+            <li>两端在 DataStream / 计费报表里天然分离；缓存 Key 里 <code>hostname</code> 亦会把 m 和 www 拆成两份</li>
+          </ul>
+        </div>
+        <div class="callout">
+          <strong>关键事实：</strong> 配置 100% 共享。任何对 m 的规则调整也会同时影响 www，反之亦然。
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ §3 Origin ============ -->
+  <section id="origin">
+    <h2><span class="chapter-num">§3</span> 回源</h2>
+    <ul>
+      <li><strong>Origin：</strong> <code>lq-bf-nuxt-1212474737.us-east-2.elb.amazonaws.com</code>（AWS ALB，us-east-2；Nuxt SSR）</li>
+      <li>透传 Host 头 → 源站通过 Host 判定渲染 PC 或 M 版（Nuxt 侧根据 host 决定模板）</li>
+    </ul>
+  </section>
+
+  <!-- ============ §4 Cache ============ -->
+  <section id="cache">
+    <h2><span class="chapter-num">§4</span> 缓存策略</h2>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">M-4</span>缓存矩阵（与 www 完全一致）</div>
+        <span class="badge info">4 列表</span>
+      </div>
+      <div class="rule-body">
+        <p><strong>与 www 完全一致</strong>（缓存 Key 里 <code>hostname</code> 会把 m 和 www 自然拆成两份；CP Code 区分：m = <code>1435979</code>、www = <code>1435977</code>）：</p>
+
+        <table class="tbl">
+          <thead>
+            <tr><th>路径 / 扩展</th><th>TTL</th><th>Cache Tag</th><th>Cache Key 构成</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>/</code>（首页）</td><td><strong>6h</strong></td><td><code>bf-all</code> + <code>bf-home</code></td><td>host + path + cookies(currency, group_id, abTest)</td></tr>
+            <tr><td>HTML 列表/详情页（非 <code>/activity/*</code>）</td><td><strong>6h</strong></td><td><code>bf-all</code> + <code>bf-listinfo</code></td><td>host + path + cookies + <strong>除 34 个追踪参数外的所有 query</strong>（EXCLUDE）</td></tr>
+            <tr><td><code>/blog/*</code></td><td><strong>365d</strong></td><td><code>bf-blog</code></td><td>host + path + cookies + query <code>page</code></td></tr>
+            <tr><td><code>/activity/*</code>、<code>/activity-*</code></td><td><strong>6h</strong></td><td><code>bf-all</code> + <code>bf-activity</code></td><td>host + path + cookies</td></tr>
+            <tr><td><code>/static/*</code></td><td><strong>1d</strong></td><td>—</td><td>仅 path（若带 <code>?LT1RVf0...=X</code> token 则拆版本，optional）</td></tr>
+            <tr><td><code>ext=css/js</code></td><td><strong>365d</strong></td><td>—</td><td>query <code>v</code> 作版本号</td></tr>
+            <tr><td><code>ext=jpg/png/webp/gif/...</code></td><td><strong>365d</strong></td><td>—</td><td>含所有 query 参数</td></tr>
+            <tr><td><code>ext=woff/woff2/otf/ttf/eot</code></td><td><strong>365d</strong></td><td>—</td><td>—</td></tr>
+            <tr><td>其它 HTML（<code>.htm/.php/.jsp/.aspx</code>）</td><td><code>NO_STORE</code></td><td>—</td><td>—</td></tr>
+            <tr><td><strong>任意带 <code>?akaCache=nce</code></strong></td><td><code>NO_STORE</code>（绕过）</td><td>—</td><td>—</td></tr>
+            <tr><td>默认行为</td><td><code>NO_STORE</code>（运维口径 "ttl=0"）</td><td>—</td><td>—</td></tr>
+          </tbody>
+        </table>
+
+        <h4 class="mt-lg">列表 &amp; 详情页的 34 个追踪参数 EXCLUDE 列表（不进 cache key）</h4>
+<pre class="code" data-label="EXCLUDE 34 参数">gad_source, utm_source, utm_medium, utm_campaign, utm_content, utm_term,
+utm_expid, utm_referrer, gclid, cx, ie, cof, siteurl, aid, campaign_id,
+fbclid, rfsn, subid, msclkid, fclid, rlid, sscid, track_xid, wtbap,
+tagtag_uid, spm, wtbae, message_id, mobile, firstname, lastname, crm_spm,
+srsltid, brid, afsrc</pre>
+
+        <div class="callout">
+          <code>utm_source=google/facebook.com/tiktok</code> 三个值会进 cache key 拆版本（用于独立评估广告来源命中率）。
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ §5 Redirect ============ -->
+  <section id="redirect">
+    <h2><span class="chapter-num">§5</span> 跳转 &amp; 分流规则</h2>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">M-5</span>Desktop → PC（m → www）302 跳转</div>
+        <span class="badge info">核心规则</span>
+      </div>
+      <div class="rule-body">
+        <ul>
+          <li>HTTP → HTTPS <strong>301</strong></li>
+          <li><strong>Desktop UA 访问 m → 302 回 <code>www.beautyforever.com</code></strong>（强制 PC 用户到 PC 站）</li>
+          <li>Mobile UA 访问 www → <strong>302</strong> 到 m（反向）</li>
+        </ul>
+
+        <h4 class="mt-lg">Desktop→PC（m → www）跳转白名单（满足任一则不跳）</h4>
+        <table class="tbl">
+          <thead>
+            <tr><th>#</th><th>条件</th><th>说明</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td><strong>LqPassWaf UA 白名单</strong><br><code>UA ∈ ["LqPassWaf/851.3", "LqPassWaf/851.3 (it; Categraf)"]</code></td>
+              <td>内部 WAF / 健康检查 / Categraf 采集</td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td><strong>Apple Pay 路径白名单</strong><br><code>path = /.well-known/apple-developer-merchantid-domain-association.txt</code></td>
+              <td><strong>Apple Pay 域名注册校验</strong>（必须保留 m 域名 200 响应，不可重定向）</td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td><strong>js/css 扩展名白名单</strong><br><code>ext ∈ ["js", "css"]</code></td>
+              <td>静态资源不参与 UA 判定</td>
+            </tr>
+            <tr>
+              <td>4</td>
+              <td><code>deviceCharacteristic[IS_MOBILE]</code> 判定仍为 true 时不触发</td>
+              <td>继续停留在 m</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="callout warn mt-lg">
+          <span class="badge pending">⚠ 苹果支付域验证</span>
+          <strong>Apple Pay 路径白名单必须保留</strong>
+          <ul>
+            <li>路径：<code>/.well-known/apple-developer-merchantid-domain-association.txt</code></li>
+            <li>触发场景：Apple Pay 商户 merchantid 域名注册校验时，Apple 从 <code>m.beautyforever.com</code> 拉取该文件</li>
+            <li>要求：必须 <strong>HTTP 200</strong> 响应（保留文件内容），<strong>不可 302 跳转到 www</strong></li>
+            <li>影响：若误被 Desktop→PC 规则 302，Apple Pay 注册/续期将失败，m 站支付链路中断</li>
+            <li>迁移到 CloudFront 时，等价规则需放在 Viewer Request Function 最前面（UA 判断之前）</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ §6 加速 ============ -->
+  <section id="accel">
+    <h2><span class="chapter-num">§6</span> 加速能力</h2>
+    <ul>
+      <li>与 www 同：SureRoute、Tiered Distribution、HTTP/2 &amp; HTTP/3、Adaptive Acceleration、Prefetch、gzip ALWAYS。</li>
+    </ul>
+  </section>
+
+  <!-- ============ §7 WAF ============ -->
+  <section id="waf">
+    <h2><span class="chapter-num">§7</span> 安全（WAF）</h2>
+    <table class="tbl">
+      <thead>
+        <tr><th>字段</th><th>值</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>WAF Config</td><td><code>Security Configuration</code> (id 89613) v145</td></tr>
+        <tr><td>Match Target</td><td>sequence 1 (id 5789054) —— 与 www 同一个 match target</td></tr>
+        <tr><td><strong>Policy</strong></td><td><strong><code>Policy Deny</code> (<code>qik1_201886</code>)</strong></td></tr>
+        <tr><td>Bypass Network List</td><td><code>146351_SECURITYBYPASSLIST</code>（<strong>2026-04-21 审计为空 <code>elementCount=0</code></strong>）</td></tr>
+        <tr><td>启用控件</td><td>WAF、Bot Manager、Network、Rate、Slow POST</td></tr>
+        <tr><td>当天变更</td><td>2026-04-21 新增的 ASN 202425 拦截规则（Custom Rule id <code>60383229</code>）<strong>仅匹配 <code>www.beautyforever.com</code>，不影响 m</strong></td></tr>
+        <tr><td>Property staging 待上线</td><td>与 www 共享 essl v63 HSTS 改动（未到生产）</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ============ §8 Response Headers ============ -->
+  <section id="resp-headers">
+    <h2><span class="chapter-num">§8</span> CDN 层响应头修改</h2>
+    <ul>
+      <li>删 <code>X-Powered-By</code>、<code>Server</code></li>
+      <li>加 <code>Timing-Allow-Origin: *</code></li>
+    </ul>
+  </section>
+
+  <!-- ============ §9 Origin Headers ============ -->
+  <section id="origin-headers">
+    <h2><span class="chapter-num">§9</span> 回源请求头</h2>
+    <ul>
+      <li>透传 <code>True-Client-IP</code></li>
+      <li><code>modifyOutgoingRequestHeader</code> 自定义头（与 www 相同）</li>
+    </ul>
+  </section>
+
+  <!-- ============ §10 Dyn/Static ============ -->
+  <section id="dyn-static">
+    <h2><span class="chapter-num">§10</span> 动静态判定</h2>
+    <p><strong>类型：混合偏动态</strong>（与 www 相同结论）。详见 <a href="./90-dynamic-static.html">90 Dynamic/Static Analysis</a>。</p>
+    <p>m 站的所有动态逻辑与 www 共享：HTML 由 Nuxt SSR 渲染，部分热点路径边缘按 cookie 拆版缓存，静态资源 365d。</p>
+  </section>
+
+  <!-- ============ §11 Team Agent ============ -->
+  <section id="team-agent">
+    <h2><span class="chapter-num">§11</span> Team Agent 后续可挖</h2>
+    <ol>
+      <li>与 www 相同的挖掘列表（见 <a href="./30-domain-www.html">30 Domain www</a> §11）</li>
+      <li><strong>m 专属的移动端请求 patterns</strong>：
+        <ul>
+          <li>Is SEO-indexed（ext=html 的 6h 缓存是否真命中？）</li>
+          <li>Mobile UA 检测逻辑（Akamai 内置 <code>User-Agent Device Class</code> 判断）</li>
+        </ul>
+      </li>
+      <li>Hostname 分支子规则（<code>Hostnames</code> 父规则下 2 个 children，raw JSON 里细看）—— 是否对 m 做了 UA / 路径差异处理</li>
+    </ol>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <div>
+    Akamai 配置调研 · beautyforever.com · 2026-04-21<br>
+    源文档：<code>../doc/*.md</code> · 原始 JSON：<code>../raw/*.json</code> · Keith · AWS Solutions Architect
+  </div>
+</footer>
+
+<script src="./assets/app.js" defer></script>
+
+</body>
+</html>

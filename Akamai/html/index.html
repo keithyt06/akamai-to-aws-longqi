@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Akamai · beautyforever.com 配置面板</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./assets/style.css" />
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-inner">
+    <span class="hero-badge">Akamai Discovery · 采集 2026-04-21</span>
+    <h1>Akamai · <span class="accent">beautyforever.com</span> 配置面板</h1>
+    <p class="subtitle">
+      Xuchang Longqi E-Commerce（许昌龙麒）账号下三个域名
+      <code>www.beautyforever.com</code> / <code>m.beautyforever.com</code> / <code>api.beautyforever.com</code>
+      的 Akamai CDN + WAF 活体配置。采用 Akamai CLI + PAPI 直调方式 1:1 还原规则树，
+      并把 <strong>运维截图反馈</strong> 与 raw JSON 做了交叉比对。本面板是 MD 文档的交互化视图——每个模块含数据表、规则卡、SVG 流程图。
+    </p>
+    <div class="meta">
+      <span><strong>Account</strong> act_F-AC-4891758</span>
+      <span><strong>Contract</strong> ctr_V-4GARL4E</span>
+      <span><strong>Group</strong> grp_230665</span>
+      <span><strong>Product</strong> Fresca (Ion)</span>
+      <span><strong>数据来源</strong> 活体 API + raw/*.json</span>
+    </div>
+  </div>
+</header>
+
+<main class="container">
+
+  <div style="background: var(--warn-dim); border: 1px solid var(--warn); border-radius: 8px; padding: 16px 20px; margin-bottom: 28px;">
+    <div style="color: var(--warn); font-weight: 700; font-size: var(--heading-size); margin-bottom: 8px;">⚠ 2026-04-21 Live CLI Audit · 3 条漂移</div>
+    <div style="color: var(--text-primary); font-size: var(--body-size); line-height: 1.6;">
+      全量 <code>doc/</code> + <code>raw/</code> 已用 <code>akamai pm</code> / PAPI / AppSec / Network-List 端点逐条核对，详见 <a href="./40-ops-verification.html#live-audit">40-ops-verification §6</a>：
+      <br>① <strong>HSTS staging 待上生产</strong> —— <code>beautyforever.com_essl</code> v63 和 <code>api.beautyforever.com</code> v11（2026-01-06 激活 STAGING）尚未到 production；
+      <br>② Network List <code>146351_SECURITYBYPASSLIST</code> <strong>实际为空</strong>（<code>elementCount=0</code>），无白名单 IP 生效；
+      <br>③ ASN 202425 拦截规则 = Custom Rule id <code>60383229</code>，<code>hostMatch(www.beautyforever.com) AND asNumberMatch(202425)</code>。
+      <br>Production 版本（essl v62、api v10、WAF v145）与 raw JSON 字节级一致 ✅。
+    </div>
+  </div>
+
+  <section id="conclusions">
+    <h2>一句话结论</h2>
+    <p class="section-intro">
+      三个域名的 CDN + WAF 归属与动静态类型摘要——详见 MODULE 90。
+    </p>
+    <table class="tbl">
+      <thead>
+        <tr><th>域名</th><th>Property</th><th>WAF Policy</th><th>动静态判定</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>www.beautyforever.com</strong></td>
+          <td><code>beautyforever.com_essl</code> v62</td>
+          <td><code>Policy Deny</code> (qik1_201886)</td>
+          <td>混合偏动态<br><span style="color:var(--text-muted);font-size:.8em">Nuxt SSR + 边缘页面缓存 6h–365d</span></td>
+        </tr>
+        <tr>
+          <td><strong>m.beautyforever.com</strong></td>
+          <td>同上（共享 Property · CP Code 1435979）</td>
+          <td><code>Policy Deny</code></td>
+          <td>混合偏动态</td>
+        </tr>
+        <tr>
+          <td><strong>api.beautyforever.com</strong></td>
+          <td><code>api.beautyforever.com</code> v10</td>
+          <td><code>Policy Api</code> (0124_243504)</td>
+          <td><strong style="color:var(--warn)">纯动态</strong><br><span style="color:var(--text-muted);font-size:.8em">默认 NO_STORE × 双重兜底</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="modules">
+    <h2>模块导航</h2>
+    <p class="section-intro">按配置层级和域名维度拆成 9 个模块。每个 HTML 页面对应一份 MD（在 <code>../doc/</code>）。</p>
+
+    <div class="mod-grid">
+
+      <a class="mod-card" href="./00-account.html">
+        <span class="mod-num">MODULE 00</span>
+        <h3>Account Overview</h3>
+        <p>账号 · Contract · Group · API Client 权限（含 find-by-value 403 限制）· 资源 ID 速查表。</p>
+        <div class="mod-meta"><span>基础层</span><span>~6 表</span><span>edgerc</span></div>
+      </a>
+
+      <a class="mod-card" href="./10-property-essl.html">
+        <span class="mod-num">MODULE 10</span>
+        <h3>Property · beautyforever.com_essl v62</h3>
+        <p>承载 www + m。19 条顶层规则 · CP Code 分流 · 缓存矩阵 + 34 参数 EXCLUDE · 302 跳转白名单 · Nuxt SSR 回源。</p>
+        <div class="mod-meta"><span>CDN 主干</span><span>~12 区块</span><span>Ion / ESSL</span></div>
+      </a>
+
+      <a class="mod-card" href="./11-property-api.html">
+        <span class="mod-num">MODULE 11</span>
+        <h3>Property · api.beautyforever.com v10</h3>
+        <p>Origin <code>lq-bf-api-*</code> · 默认 NO_STORE 双重兜底 · ⚠ <code>breakConnection</code> 故障注入 + XFF 前导空格 bug。</p>
+        <div class="mod-meta"><span>API 层</span><span>~8 区块</span><span>REST / JSON</span></div>
+      </a>
+
+      <a class="mod-card" href="./20-waf.html">
+        <span class="mod-num">MODULE 20</span>
+        <h3>WAF · Security Configuration 89613 v145</h3>
+        <p>3 条 policies（Deny / Alert / Api）· 3 match-targets · hostname coverage · 2026-04-21 ASN 202425 拦截。</p>
+        <div class="mod-meta"><span>安全层</span><span>~7 区块</span><span>appsec</span></div>
+      </a>
+
+      <a class="mod-card" href="./30-domain-www.html">
+        <span class="mod-num">MODULE 30</span>
+        <h3>Domain · www.beautyforever.com</h3>
+        <p>单域名穿透视图。DNS/TLS · 缓存矩阵 · 跳转 · WAF · 动静态判定一体呈现。</p>
+        <div class="mod-meta"><span>域名视图</span><span>~11 区块</span><span>PC 站</span></div>
+      </a>
+
+      <a class="mod-card" href="./31-domain-m.html">
+        <span class="mod-num">MODULE 31</span>
+        <h3>Domain · m.beautyforever.com</h3>
+        <p>共享 Property 的移动站。重点标 CP Code 差异（1435979）+ Apple Pay <code>.well-known</code> 白名单。</p>
+        <div class="mod-meta"><span>域名视图</span><span>~11 区块</span><span>Mobile 站</span></div>
+      </a>
+
+      <a class="mod-card" href="./32-domain-api.html">
+        <span class="mod-num">MODULE 32</span>
+        <h3>Domain · api.beautyforever.com</h3>
+        <p>独立 Property 的 API 域。双层 NO_STORE · breakConnection · XFF 前导空格 · 10+ 子规则。</p>
+        <div class="mod-meta"><span>域名视图</span><span>~10 区块</span><span>API</span></div>
+      </a>
+
+      <a class="mod-card" href="./40-ops-verification.html">
+        <span class="mod-num">MODULE 40</span>
+        <h3>Ops Verification</h3>
+        <p>运维 4 条反馈 × raw JSON 11 行核对表（✅⚠❌）+ 7 个初版错误复盘 + 验证脚本留存。</p>
+        <div class="mod-meta"><span>质量层</span><span>~5 区块</span><span>audit</span></div>
+      </a>
+
+      <a class="mod-card" href="./90-dynamic-static.html">
+        <span class="mod-num">MODULE 90</span>
+        <h3>Dynamic / Static Analysis</h3>
+        <p>核心结论。3 域名 × 动静态判定矩阵 · 对迁移 AWS 的影响 · curl/DataStream 验证建议。</p>
+        <div class="mod-meta"><span>分析</span><span>~6 区块</span><span>迁移决策</span></div>
+      </a>
+
+      <a class="mod-card" href="./99-queries.html">
+        <span class="mod-num">MODULE 99</span>
+        <h3>CLI / PAPI Queries</h3>
+        <p>重现本次调研的所有命令。akamai pm · appsec · Python edgegrid · raw JSON 清单 · ID 速查。</p>
+        <div class="mod-meta"><span>参考</span><span>~8 区块</span><span>复现</span></div>
+      </a>
+
+    </div>
+  </section>
+
+  <section id="topology">
+    <h2>数据拓扑（一图看懂）</h2>
+    <p class="section-intro">三个域名在 Akamai 上的配置分布——Property 承载关系 + WAF Policy 映射 + 源站走向。</p>
+
+    <div class="arch-svg">
+      <svg viewBox="0 0 900 380" role="img" aria-label="Akamai beautyforever.com topology">
+        <defs>
+          <marker id="svg-arrow-head" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#636c76" />
+          </marker>
+          <marker id="svg-arrow-head-active" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#FF9900" />
+          </marker>
+        </defs>
+
+        <!-- 客户域名列 -->
+        <text class="svg-hint" x="60" y="22">① Client Hostname</text>
+        <rect class="svg-box" x="20" y="40" width="160" height="56" />
+        <text class="svg-label" x="100" y="62" text-anchor="middle">www.beautyforever.com</text>
+        <text class="svg-sub" x="100" y="80" text-anchor="middle">CNAME → edgekey.net</text>
+
+        <rect class="svg-box" x="20" y="115" width="160" height="56" />
+        <text class="svg-label" x="100" y="137" text-anchor="middle">m.beautyforever.com</text>
+        <text class="svg-sub" x="100" y="155" text-anchor="middle">CNAME → edgekey.net</text>
+
+        <rect class="svg-box" x="20" y="210" width="160" height="56" />
+        <text class="svg-label" x="100" y="232" text-anchor="middle">api.beautyforever.com</text>
+        <text class="svg-sub" x="100" y="250" text-anchor="middle">CNAME → edgekey.net</text>
+
+        <!-- Property 列 -->
+        <text class="svg-hint" x="280" y="22">② Property (CDN)</text>
+        <rect class="svg-box-primary" x="240" y="40" width="200" height="130" />
+        <text class="svg-label" x="340" y="64" text-anchor="middle">beautyforever.com_essl</text>
+        <text class="svg-sub" x="340" y="82" text-anchor="middle">prp_910841 · v62 · Fresca</text>
+        <text class="svg-sub" x="340" y="100" text-anchor="middle">CP Code: www=1435977</text>
+        <text class="svg-sub" x="340" y="118" text-anchor="middle">            m=1435979</text>
+        <text class="svg-sub" x="340" y="140" text-anchor="middle" style="fill:#79c0ff">19 条顶层规则 · SureRoute · H3</text>
+        <text class="svg-sub" x="340" y="158" text-anchor="middle" style="fill:#79c0ff">Page Cache 6h–365d</text>
+
+        <rect class="svg-box-secondary" x="240" y="210" width="200" height="56" />
+        <text class="svg-label" x="340" y="232" text-anchor="middle">api.beautyforever.com</text>
+        <text class="svg-sub" x="340" y="250" text-anchor="middle">prp_956325 · v10 · NO_STORE×2</text>
+
+        <!-- WAF 列 -->
+        <text class="svg-hint" x="540" y="22">③ WAF Policy</text>
+        <rect class="svg-box-warn" x="500" y="40" width="180" height="130" />
+        <text class="svg-label" x="590" y="62" text-anchor="middle">Policy Deny</text>
+        <text class="svg-sub" x="590" y="80" text-anchor="middle">qik1_201886</text>
+        <text class="svg-sub" x="590" y="104" text-anchor="middle" style="fill:#d29922">+ 2026-04-21 新增</text>
+        <text class="svg-sub" x="590" y="122" text-anchor="middle" style="fill:#d29922">ASN 202425 拦截</text>
+        <text class="svg-sub" x="590" y="144" text-anchor="middle">Bot · Rate · Slow POST</text>
+        <text class="svg-sub" x="590" y="162" text-anchor="middle">Bypass: 146351_*</text>
+
+        <rect class="svg-box-warn" x="500" y="210" width="180" height="56" />
+        <text class="svg-label" x="590" y="232" text-anchor="middle">Policy Api</text>
+        <text class="svg-sub" x="590" y="250" text-anchor="middle">0124_243504</text>
+
+        <!-- Origin 列 -->
+        <text class="svg-hint" x="760" y="22">④ Origin (AWS)</text>
+        <rect class="svg-box" x="720" y="70" width="160" height="60" />
+        <text class="svg-label" x="800" y="92" text-anchor="middle">Nuxt ALB</text>
+        <text class="svg-sub" x="800" y="110" text-anchor="middle">us-east-2</text>
+        <text class="svg-sub" x="800" y="124" text-anchor="middle" style="fill:#79c0ff">lq-bf-nuxt-*</text>
+
+        <rect class="svg-box" x="720" y="210" width="160" height="60" />
+        <text class="svg-label" x="800" y="232" text-anchor="middle">API ALB</text>
+        <text class="svg-sub" x="800" y="250" text-anchor="middle">us-east-2</text>
+        <text class="svg-sub" x="800" y="264" text-anchor="middle" style="fill:#79c0ff">lq-bf-api-*</text>
+
+        <!-- 箭头 hostnames → property -->
+        <path class="svg-arrow-active" d="M 180 68 C 210 68, 210 80, 240 90" />
+        <path class="svg-arrow-active" d="M 180 143 C 210 143, 210 130, 240 120" />
+        <path class="svg-arrow"       d="M 180 238 L 240 238" />
+
+        <!-- 箭头 property → WAF -->
+        <path class="svg-arrow-active" d="M 440 105 L 500 105" />
+        <path class="svg-arrow"       d="M 440 238 L 500 238" />
+
+        <!-- 箭头 WAF → origin（表示请求放行后走源站） -->
+        <path class="svg-arrow-active" d="M 680 100 L 720 100" />
+        <path class="svg-arrow"       d="M 680 238 L 720 238" />
+
+        <!-- 底部说明 -->
+        <text class="svg-hint" x="450" y="320" text-anchor="middle">Edge Hostname ehn_5327863 (www+m) · ehn_5406989 (api) · 均走 CPS 托管证书</text>
+        <text class="svg-hint" x="450" y="340" text-anchor="middle">回源透传 True-Client-IP · 区域均为 us-east-2（俄亥俄）</text>
+      </svg>
+      <div class="arch-caption">
+        <strong>布局</strong>：3 个客户域名 → 2 个 Property → 2 个 WAF Policy → 2 个 AWS ALB 源站。
+      </div>
+    </div>
+  </section>
+
+  <section id="quick-checks">
+    <h2>快速验证（本地实活）</h2>
+    <p class="section-intro">这些命令在本环境可以直接跑，用来快速确认采集到的活体配置与当前行为一致。</p>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">LIVE-01</span> 三个域名的边缘响应头</div>
+        <span class="badge info">smoke</span>
+      </div>
+      <div class="rule-body">
+<pre class="code" data-label="shell">curl -sI 'https://www.beautyforever.com/'   | grep -Ei 'x-cache|cache-control|server|edge'
+curl -sI 'https://m.beautyforever.com/'     | grep -Ei 'x-cache|cache-control|server|edge'
+curl -sI 'https://api.beautyforever.com/'   | grep -Ei 'x-cache|cache-control|server|edge'</pre>
+        <div class="expect"><strong>预期</strong>：www/m 命中 Page Caching 的路径返回 <code>X-Cache: TCP_HIT_</code> 或 <code>TCP_MISS_</code> + <code>Cache-Control: max-age=21600</code>；api 基本都是 <code>NO_STORE</code>/<code>X-Cache: TCP_MISS_</code>。</div>
+      </div>
+    </div>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">LIVE-02</span> <code>?akaCache=nce</code> 绕过缓存</div>
+        <span class="badge info">backdoor</span>
+      </div>
+      <div class="rule-body">
+<pre class="code" data-label="shell">curl -sI 'https://www.beautyforever.com/?akaCache=nce' | grep -Ei 'cache'</pre>
+        <div class="expect"><strong>预期</strong>：一定是 MISS/NO_STORE（Akamai 专属约定）。迁移到 CloudFront 时需保留等价 backdoor。</div>
+      </div>
+    </div>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">LIVE-03</span> PC ↔ Mobile 302 互跳</div>
+        <span class="badge info">redirect</span>
+      </div>
+      <div class="rule-body">
+<pre class="code" data-label="shell"><span class="token-com"># iPhone UA 访问 www，应 302 → m.*</span>
+curl -sI -H 'User-Agent: Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15' \
+  'https://www.beautyforever.com/' | grep -Ei '^HTTP|location'
+
+<span class="token-com"># Desktop UA 访问 m，应 302 → www.*</span>
+curl -sI -H 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/605.1.15' \
+  'https://m.beautyforever.com/' | grep -Ei '^HTTP|location'
+
+<span class="token-com"># 白名单 UA 不跳转</span>
+curl -sI -H 'User-Agent: LqPassWaf/851.3' 'https://www.beautyforever.com/' | grep -Ei '^HTTP'</pre>
+        <div class="expect"><strong>预期</strong>：前两条 <code>HTTP/2 302</code> + <code>Location: https://...</code>；最后 <code>LqPassWaf</code> UA 返回 <code>200</code>（不跳转）。</div>
+      </div>
+    </div>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">LIVE-04</span> Apple Pay 路径白名单</div>
+        <span class="badge info">allowlist</span>
+      </div>
+      <div class="rule-body">
+<pre class="code" data-label="shell"><span class="token-com"># Desktop UA 访问 m 的 Apple Pay 验证文件，应 200 而不是 302</span>
+curl -sI -H 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0)' \
+  'https://m.beautyforever.com/.well-known/apple-developer-merchantid-domain-association.txt' \
+  | grep -Ei '^HTTP'</pre>
+        <div class="expect"><strong>预期</strong>：<code>HTTP/2 200</code>。若返回 302 说明规则出问题，Apple Pay 域名注册会失败。</div>
+      </div>
+    </div>
+
+  </section>
+
+  <section id="ops-scope">
+    <h2>Team Agent 可继续挖的方向</h2>
+    <p class="section-intro">本次一手采集已覆盖主干；下列项目仍是"黑盒"或值得深挖：</p>
+    <div class="confirm-grid">
+      <div class="confirm-item"><span class="box"></span>Advanced 节点 XML metadata（两个 Property 都有）</div>
+      <div class="confirm-item"><span class="box"></span>Bypass Network List <code>146351_SECURITYBYPASSLIST</code> 真实 IP 清单</div>
+      <div class="confirm-item"><span class="box"></span>WAF Custom Rules / Rate Policy / Slow POST 阈值</div>
+      <div class="confirm-item"><span class="box"></span>Bot Manager 类别动作与自定义 Bot Category</div>
+      <div class="confirm-item"><span class="box"></span>Js tag 注入的具体 JS 内容</div>
+      <div class="confirm-item"><span class="box"></span>DataStream 24h cache offload rate 真实命中率</div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <div>
+    Akamai 配置调研 · beautyforever.com · 2026-04-21<br>
+    源文档：<code>../doc/*.md</code> · 原始 JSON：<code>../raw/*.json</code> · Keith · AWS Solutions Architect
+  </div>
+</footer>
+
+<script src="./assets/app.js" defer></script>
+
+</body>
+</html>

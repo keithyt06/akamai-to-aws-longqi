@@ -1,0 +1,68 @@
+# --- Credentials / secrets (NEVER commit) ---
+.edgerc
+.env
+.env.*
+*.pem
+*.key
+credentials
+credentials.json
+.aws/
+.akamai-cli/
+
+# --- Terraform ---
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfplan.*
+terraform.tfvars
+terraform.tfvars.json
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# --- Node.js ---
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+.npm/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+*.egg-info/
+dist/
+build/
+
+# --- test-harness runtime artifacts ---
+Cloudfront/test-harness/baseline/artifacts/
+Cloudfront/test-harness/probe/artifacts/
+Cloudfront/test-harness/report/out/
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.vscode/
+.idea/
+*.iml
+
+# --- delivery build output (if any) ---
+Cloudfront/delivery/assets/*.min.css
+Cloudfront/delivery/assets/*.min.js

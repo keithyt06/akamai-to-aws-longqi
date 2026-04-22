@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Module 10 · Property beautyforever.com_essl v62 — Akamai</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./assets/style.css" />
+</head>
+<body>
+<nav class="topnav">
+  <div class="brand"><span class="dot">●</span> Akamai · beautyforever.com</div>
+  <div class="nav-links">
+    <a href="./index.html">Home</a>
+    <a href="./00-account.html">00 Account</a>
+    <a href="./10-property-essl.html" class="active">10 Property ESSL</a>
+    <a href="./11-property-api.html">11 Property API</a>
+    <a href="./20-waf.html">20 WAF</a>
+    <a href="./30-domain-www.html">30 Domain www</a>
+    <a href="./31-domain-m.html">31 Domain m</a>
+    <a href="./32-domain-api.html">32 Domain api</a>
+    <a href="./40-ops-verification.html">40 Ops Verify</a>
+    <a href="./90-dynamic-static.html">90 Dyn/Static</a>
+    <a href="./99-queries.html">99 Queries</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="hero-inner">
+    <span class="hero-badge">Module 10 · Property beautyforever.com_essl v62</span>
+    <h1>Property · <span class="accent">beautyforever.com_essl</span> v62</h1>
+    <p class="subtitle">
+      承载 <code>www.beautyforever.com</code> + <code>m.beautyforever.com</code> 的核心 CDN 配置。
+      19 条顶层规则 · CP Code 按 host 分流 · 缓存 6h–365d · 34 参数 EXCLUDE · PC↔M 302 互跳 · Apple Pay 白名单 · Nuxt SSR 回源。
+    </p>
+    <div class="meta">
+      <span><strong>承载域名</strong> www + m</span>
+      <span><strong>Product</strong> Fresca (Ion)</span>
+      <span><strong>Property ID</strong> prp_910841</span>
+      <span><strong>Production</strong> v62</span>
+      <span><strong>is_secure</strong> true / ESSL</span>
+    </div>
+  </div>
+</header>
+
+<main class="container">
+
+  <div style="background: var(--warn-dim); border: 1px solid var(--warn); border-radius: 8px; padding: 16px 20px; margin-bottom: 28px;">
+    <div style="color: var(--warn); font-weight: 700; font-size: var(--heading-size); margin-bottom: 8px;">⚠ 2026-04-21 Live Audit · Staging v63 HSTS 待上生产</div>
+    <div style="color: var(--text-primary); font-size: var(--body-size); line-height: 1.6;">
+      Production 仍为 <strong>v62</strong>，与 <code>raw/essl_rules.json</code> 字节级一致 ✅。
+      Staging/Latest 已是 <strong>v63</strong>（2026-01-06 激活 STAGING，备注"配置 HSTS 两年"）—— <strong>尚未上生产</strong>。
+      v63 新增 <code>HSTS</code> 子规则，<code>httpStrictTransportSecurity</code> behavior：
+      <code>enable=true</code>, <code>maxAge=TWO_YEARS</code>, <code>includeSubDomains=true</code>, <code>preload=true</code>, <code>redirect=false</code>。
+      PAPI 告警：<em>"Enabling preload makes future downgrade to HTTP difficult."</em>
+      → 迁移 CloudFront 时需在 Response Headers Policy 同步 HSTS 并评估 preload 不可逆。
+    </div>
+  </div>
+
+  <div class="toc">
+    <h3>Table of Contents · 19 章节</h3>
+    <ul>
+      <li><a href="#sec-1">§1 基本信息</a></li>
+      <li><a href="#sec-2">§2 Hostnames</a></li>
+      <li><a href="#sec-3">§3 回源（Default · origin）</a></li>
+      <li><a href="#sec-4">§4 CP Code（按 hostname 分）</a></li>
+      <li><a href="#sec-5">§5 Rule Tree 顶层（19 个子规则）</a></li>
+      <li><a href="#sec-6">§6 Offload Origin（缓存主干）</a></li>
+      <li><a href="#sec-7">§7 Cache Tag &amp; Page Caching</a></li>
+      <li><a href="#sec-8">§8 Accelerate delivery</a></li>
+      <li><a href="#sec-9">§9 Strengthen security（CDN 层）</a></li>
+      <li><a href="#sec-10">§10 Increase availability</a></li>
+      <li><a href="#sec-11">§11 Minimize payload</a></li>
+      <li><a href="#sec-12">§12 Redirect（3 条）</a></li>
+      <li><a href="#sec-13">§13 SureRoute</a></li>
+      <li><a href="#sec-14">§14 XFF 链路</a></li>
+      <li><a href="#sec-15">§15 SEO tuning</a></li>
+      <li><a href="#sec-16">§16 DataStream (DS2 日志)</a></li>
+      <li><a href="#sec-17">§17 自定义头</a></li>
+      <li><a href="#sec-18">§18 Advanced</a></li>
+      <li><a href="#sec-19">§19 值得留意 / 风险点</a></li>
+    </ul>
+  </div>
+
+  <div class="arch-svg">
+    <svg viewBox="0 0 1080 520" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="beautyforever.com_essl v62 · 19 顶层规则树">
+      <defs>
+        <marker id="svg-arrow-head" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#636c76"/>
+        </marker>
+      </defs>
+
+      <!-- root -->
+      <rect class="svg-box-primary" x="440" y="20" width="220" height="60"/>
+      <text class="svg-label" x="550" y="44" text-anchor="middle">default (root)</text>
+      <text class="svg-sub"   x="550" y="62" text-anchor="middle">prp_910841 · v62 · Fresca (Ion)</text>
+
+      <!-- 19 子规则，分三列 -->
+      <!-- 列 1 -->
+      <rect class="svg-box" x="20"  y="120" width="210" height="44"/>
+      <text class="svg-label" x="125" y="140" text-anchor="middle">§1 Augment insights</text>
+      <text class="svg-sub"   x="125" y="156" text-anchor="middle">日志 + 变量提取 · 2 children</text>
+
+      <rect class="svg-box" x="20"  y="176" width="210" height="44"/>
+      <text class="svg-label" x="125" y="196" text-anchor="middle">§2 Accelerate delivery</text>
+      <text class="svg-sub"   x="125" y="212" text-anchor="middle">H2 · H3 · AdaptiveAccel · 4 children</text>
+
+      <rect class="svg-box-primary" x="20" y="232" width="210" height="44"/>
+      <text class="svg-label" x="125" y="252" text-anchor="middle">§3 Offload origin</text>
+      <text class="svg-sub"   x="125" y="268" text-anchor="middle">caching / tiered / 8 children</text>
+
+      <rect class="svg-box" x="20"  y="288" width="210" height="44"/>
+      <text class="svg-label" x="125" y="308" text-anchor="middle">§4 Strengthen security</text>
+      <text class="svg-sub"   x="125" y="324" text-anchor="middle">allowPost · 删响应头</text>
+
+      <rect class="svg-box-warn" x="20" y="344" width="210" height="44"/>
+      <text class="svg-label" x="125" y="364" text-anchor="middle">§5 Increase availability</text>
+      <text class="svg-sub"   x="125" y="380" text-anchor="middle">Site Failover: disabled</text>
+
+      <rect class="svg-box" x="20"  y="400" width="210" height="44"/>
+      <text class="svg-label" x="125" y="420" text-anchor="middle">§6 Minimize payload</text>
+      <text class="svg-sub"   x="125" y="436" text-anchor="middle">gzip ALWAYS</text>
+
+      <rect class="svg-box-secondary" x="20" y="456" width="210" height="44"/>
+      <text class="svg-label" x="125" y="476" text-anchor="middle">§7 Hostnames</text>
+      <text class="svg-sub"   x="125" y="492" text-anchor="middle">www / m 分支 CP Code 覆盖</text>
+
+      <!-- 列 2 -->
+      <rect class="svg-box-warn" x="435" y="120" width="210" height="44"/>
+      <text class="svg-label" x="540" y="140" text-anchor="middle">§8 Redirect</text>
+      <text class="svg-sub"   x="540" y="156" text-anchor="middle">HTTPS · PC↔M 302 · 3 children</text>
+
+      <rect class="svg-box" x="435" y="176" width="210" height="44"/>
+      <text class="svg-label" x="540" y="196" text-anchor="middle">§9 SureRoute</text>
+      <text class="svg-sub"   x="540" y="212" text-anchor="middle">PERFORMANCE · hostname=www/m</text>
+
+      <rect class="svg-box-primary" x="435" y="232" width="210" height="44"/>
+      <text class="svg-label" x="540" y="252" text-anchor="middle">§10 Cache Tag &amp; Page Caching</text>
+      <text class="svg-sub"   x="540" y="268" text-anchor="middle">www/m · 5 children · 6h-365d</text>
+
+      <rect class="svg-box" x="435" y="288" width="210" height="44"/>
+      <text class="svg-label" x="540" y="308" text-anchor="middle">§11 Js tag</text>
+      <text class="svg-sub"   x="540" y="324" text-anchor="middle">注入 JS · 2 children</text>
+
+      <rect class="svg-box" x="435" y="344" width="210" height="44"/>
+      <text class="svg-label" x="540" y="364" text-anchor="middle">§12 ADV</text>
+      <text class="svg-sub"   x="540" y="380" text-anchor="middle">autoDomainValidation</text>
+
+      <rect class="svg-box" x="435" y="400" width="210" height="44"/>
+      <text class="svg-label" x="540" y="420" text-anchor="middle">§13 XFF</text>
+      <text class="svg-sub"   x="540" y="436" text-anchor="middle">PMUSER_CLIENT_IP · 2 children</text>
+
+      <rect class="svg-box" x="435" y="456" width="210" height="44"/>
+      <text class="svg-label" x="540" y="476" text-anchor="middle">§14 SEO tuning</text>
+      <text class="svg-sub"   x="540" y="492" text-anchor="middle">PMUSER_TRIGGERED_RULES</text>
+
+      <!-- 列 3 -->
+      <rect class="svg-box" x="850" y="120" width="210" height="44"/>
+      <text class="svg-label" x="955" y="140" text-anchor="middle">§15 timing-allow-origin</text>
+      <text class="svg-sub"   x="955" y="156" text-anchor="middle">modifyOutgoingResponseHeader</text>
+
+      <rect class="svg-box" x="850" y="176" width="210" height="44"/>
+      <text class="svg-label" x="955" y="196" text-anchor="middle">§16 Add DS2</text>
+      <text class="svg-sub"   x="955" y="212" text-anchor="middle">datastream</text>
+
+      <rect class="svg-box" x="850" y="232" width="210" height="44"/>
+      <text class="svg-label" x="955" y="252" text-anchor="middle">§17 指定回源请求头</text>
+      <text class="svg-sub"   x="955" y="268" text-anchor="middle">modifyOutgoingRequestHeader</text>
+
+      <rect class="svg-box" x="850" y="288" width="210" height="44"/>
+      <text class="svg-label" x="955" y="308" text-anchor="middle">§18 图片响应头</text>
+      <text class="svg-sub"   x="955" y="324" text-anchor="middle">jpg/png/webp · downstream 365d</text>
+
+      <rect class="svg-box-warn" x="850" y="344" width="210" height="44"/>
+      <text class="svg-label" x="955" y="364" text-anchor="middle">§19 Advanced</text>
+      <text class="svg-sub"   x="955" y="380" text-anchor="middle">XML metadata · 未解析黑盒</text>
+
+      <!-- 从 root 到三列的连线 -->
+      <path class="svg-arrow" d="M 460 80 C 400 90, 260 100, 230 140"/>
+      <path class="svg-arrow" d="M 550 80 L 540 120"/>
+      <path class="svg-arrow" d="M 640 80 C 720 90, 820 100, 850 140"/>
+    </svg>
+    <div class="arch-caption">
+      <strong>19 条顶层规则树</strong>：黄色框为风险点（Site Failover 关闭、Advanced XML 黑盒）；橙色框为核心业务分支（Offload origin、Cache Tag &amp; Page Caching、Redirect 三跳）。
+    </div>
+  </div>
+
+  <!-- ============ §1 基本信息 ============ -->
+  <section id="sec-1">
+    <h2><span class="chapter-num">§1</span> 基本信息</h2>
+    <p class="section-intro">Property 元数据一览：身份、版本、产品、证书模式。</p>
+    <table class="tbl">
+      <thead><tr><th>字段</th><th>值</th></tr></thead>
+      <tbody>
+        <tr><td>Property Name</td><td><code>beautyforever.com_essl</code></td></tr>
+        <tr><td>Property ID</td><td><code>prp_910841</code></td></tr>
+        <tr><td>Asset ID</td><td><code>aid_11153387</code></td></tr>
+        <tr><td>Account / Contract / Group</td><td><code>act_F-AC-4891758</code> / <code>ctr_V-4GARL4E</code> / <code>grp_230665</code></td></tr>
+        <tr><td>Production Version</td><td><strong>62</strong></td></tr>
+        <tr><td>Latest Version</td><td>63</td></tr>
+        <tr><td>Staging Version</td><td>63</td></tr>
+        <tr><td>Product</td><td><strong>Fresca (Ion)</strong></td></tr>
+        <tr><td><code>is_secure</code></td><td><strong>true</strong>（Enhanced TLS / ESSL）</td></tr>
+        <tr><td>Rule Format</td><td><code>latest</code></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ============ §2 Hostnames ============ -->
+  <section id="sec-2">
+    <h2><span class="chapter-num">§2</span> Hostnames（Property 绑定的客户域名）</h2>
+    <table class="tbl">
+      <thead><tr><th>CNAME From</th><th>CNAME To (Edge Hostname)</th><th>Edge Hostname ID</th><th>Cert Provisioning</th></tr></thead>
+      <tbody>
+        <tr><td><code>www.beautyforever.com</code></td><td><code>beautyforever.com.edgekey.net</code></td><td><code>ehn_5327863</code></td><td><code>CPS_MANAGED</code></td></tr>
+        <tr><td><code>m.beautyforever.com</code></td><td><code>beautyforever.com.edgekey.net</code></td><td><code>ehn_5327863</code></td><td><code>CPS_MANAGED</code></td></tr>
+      </tbody>
+    </table>
+    <div class="callout"><strong>证书</strong>由 Akamai CPS（Certificate Provisioning System）管理；两个 hostname 共用同一个 Enhanced TLS Edge Hostname。</div>
+  </section>
+
+  <!-- ============ §3 Origin ============ -->
+  <section id="sec-3">
+    <h2><span class="chapter-num">§3</span> 回源（Default Rule · origin 行为）</h2>
+    <table class="tbl">
+      <thead><tr><th>字段</th><th>值</th></tr></thead>
+      <tbody>
+        <tr><td>originType</td><td><code>CUSTOMER</code></td></tr>
+        <tr><td><strong>origin hostname</strong></td><td><strong><code>lq-bf-nuxt-1212474737.us-east-2.elb.amazonaws.com</code></strong></td></tr>
+        <tr><td>HTTP 端口</td><td>80</td></tr>
+        <tr><td>HTTPS 端口</td><td>443</td></tr>
+        <tr><td>Origin SNI</td><td>✅</td></tr>
+        <tr><td>verificationMode</td><td><code>CUSTOM</code>（客户自定义证书校验链）</td></tr>
+        <tr><td>forwardHostHeader</td><td><code>REQUEST_HOST_HEADER</code>（透传客户 Host）</td></tr>
+        <tr><td>cacheKeyHostname</td><td><code>REQUEST_HOST_HEADER</code></td></tr>
+        <tr><td>enableTrueClientIp</td><td>✅</td></tr>
+        <tr><td>trueClientIpHeader</td><td><code>True-Client-IP</code></td></tr>
+        <tr><td>compress（回源压缩）</td><td>✅</td></tr>
+      </tbody>
+    </table>
+    <div class="callout">
+      <strong>源站判定：</strong> AWS Application Load Balancer（<code>*.us-east-2.elb.amazonaws.com</code>），区域 <strong>us-east-2</strong>（俄亥俄），后端跑 <strong>Nuxt</strong>（Vue SSR 框架，从 ALB 名称 <code>lq-bf-nuxt-*</code> 推断）。
+    </div>
+  </section>
+
+  <!-- ============ §4 CP Code ============ -->
+  <section id="sec-4">
+    <h2><span class="chapter-num">§4</span> CP Code（按 hostname 分）</h2>
+    <p class="section-intro">顶层 default 规则的 CP Code 会被 <code>Hostnames</code> 父规则下的两个分支<strong>按 host 覆盖</strong>。</p>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">ESSL-04</span>CP Code 分流（www=1435977, m=1435979）</div>
+        <span class="badge info">按 host 覆盖</span>
+      </div>
+      <div class="rule-body">
+        <table class="tbl">
+          <thead><tr><th>作用范围</th><th>CP Code ID</th><th>Name</th><th>Products</th></tr></thead>
+          <tbody>
+            <tr><td>顶层 default</td><td><code>1435979</code></td><td>m.beautyforever.com-Ion</td><td>Fresca</td></tr>
+            <tr><td><code>Hostnames / www.beautyforever.com</code></td><td><strong><code>1435977</code></strong></td><td><strong>www.beautyforever.com-Ion</strong></td><td>Fresca</td></tr>
+            <tr><td><code>Hostnames / m.beautyforever.com</code></td><td><code>1435979</code></td><td>m.beautyforever.com-Ion</td><td>Fresca</td></tr>
+          </tbody>
+        </table>
+        <div class="callout"><strong>迁移影响：</strong>实际计费和日志维度按这两个 CP Code 分开统计。迁移到 CloudFront 时对应到<strong>两个分开的 Distribution</strong> 或同一 Distribution + Logging 分组。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ §5 Rule Tree 顶层 ============ -->
+  <section id="sec-5">
+    <h2><span class="chapter-num">§5</span> Rule Tree 顶层（19 个子规则）</h2>
+<pre class="code" data-label="rule tree">default (root)
+├── Augment insights            （2 children · 日志 + 变量提取）
+├── Accelerate delivery         （4 children · HTTP/2 · HTTP/3 · Adaptive Acceleration）
+├── Offload origin              （caching/tieredDistribution/... + 8 children）
+├── Strengthen security         （3 children · allowPost · 删响应头）
+├── Increase availability       （2 children · Site Failover 关闭）
+├── Minimize payload            （1 child · gzip ALWAYS）
+├── Hostnames                   （2 children · PC/Mobile 分支）
+├── Redirect                    （3 children · HTTPS · PC↔Mobile）
+├── SureRoute                   （hostname=www+m → sureRoute PERFORMANCE）
+├── Cache Tag &amp; Page Caching    （hostname=www+m · 5 children）
+├── Js tag                      （2 children · 注入 JS）
+├── ADV                         （autoDomainValidation）
+├── XFF                         （2 children · PMUSER_CLIENT_IP 变量）
+├── SEO tuning                  （setVariable PMUSER_TRIGGERED_RULES）
+├── timing-allow-origin         （modifyOutgoingResponseHeader）
+├── Add DS2                     （datastream）
+├── 指定回源请求头              （modifyOutgoingRequestHeader）
+├── 图片响应头                   （jpg/png/webp/... downstreamCache 365d）
+└── Advanced                    （advanced XML metadata）</pre>
+  </section>
+
+  <!-- ============ §6 Offload Origin ============ -->
+  <section id="sec-6">
+    <h2><span class="chapter-num">§6</span> Offload Origin（缓存主干）</h2>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">ESSL-06a</span>顶层默认行为（Default · Offload origin 节点）</div>
+        <span class="badge warn">默认 NO_STORE</span>
+      </div>
+      <div class="rule-body">
+        <table class="tbl">
+          <thead><tr><th>behavior</th><th>配置</th></tr></thead>
+          <tbody>
+            <tr><td><code>caching</code></td><td><strong><code>NO_STORE</code></strong>（默认不缓存；必须由子规则显式开启）</td></tr>
+            <tr><td><code>tieredDistribution</code></td><td><strong>enabled=true</strong>（启用 Tier 2 回源聚合）</td></tr>
+            <tr><td><code>validateEntityTag</code></td><td>false</td></tr>
+            <tr><td><code>removeVary</code></td><td>true</td></tr>
+            <tr><td><code>cacheError</code></td><td>enabled=true, ttl=<strong>10s</strong>, preserveStale=true</td></tr>
+            <tr><td><code>cacheKeyQueryParams</code></td><td><code>IGNORE_ALL</code>（忽略所有 query string）</td></tr>
+            <tr><td><code>prefreshCache</code></td><td>enabled=true, prefreshval=90（缓存剩余 10% 即预热）</td></tr>
+            <tr><td><code>downstreamCache</code></td><td>allowBehavior=LESSER, behavior=ALLOW, sendHeaders=CACHE_CONTROL, sendPrivate=false</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">ESSL-06b</span>Offload origin 子规则（按扩展名/路径分桶）</div>
+        <span class="badge info">6 子桶</span>
+      </div>
+      <div class="rule-body">
+        <table class="tbl">
+          <thead><tr><th>子规则</th><th>匹配</th><th><code>caching</code> TTL</th><th>备注</th></tr></thead>
+          <tbody>
+            <tr><td>CSS and JavaScript</td><td><code>ext=css/js</code></td><td><strong>365d</strong></td><td><code>cacheId</code> 含 query <code>v</code> 作版本号</td></tr>
+            <tr><td>Fonts</td><td><code>ext=eot/woff/woff2/otf/ttf</code></td><td><strong>365d</strong></td><td>—</td></tr>
+            <tr><td>Images</td><td><code>ext=jpg/jpeg/png/gif/webp/jp2/ico/svg/svgz</code></td><td><strong>365d</strong></td><td><code>cacheId=INCLUDE_ALL_QUERY_PARAMS</code></td></tr>
+            <tr><td>Image and Video Manager (Images)</td><td><code>ext=jpg/gif/jpeg/png/imviewer</code> + <code>host=www/m</code></td><td>365d</td><td>走 IVM 处理</td></tr>
+            <tr><td>HTML pages</td><td><code>ext=html/htm/php/jsp/aspx/EMPTY</code></td><td><strong><code>NO_STORE</code></strong></td><td>但被 <code>Cache Tag &amp; Page Caching</code> 覆盖</td></tr>
+            <tr><td>Uncacheable objects</td><td><code>cacheability IS_NOT …</code></td><td>downstreamCache=BUST</td><td>—</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ §7 Cache Tag & Page Caching ============ -->
+  <section id="sec-7">
+    <h2><span class="chapter-num">§7</span> Cache Tag &amp; Page Caching（www + m 专用页面缓存）</h2>
+
+    <div class="callout">
+      <strong>仅对 <code>hostname IN [www.beautyforever.com, m.beautyforever.com]</code> 生效。</strong><br>
+      所有页面缓存都会在响应里打 Cache Tag 标签（用于 Fast Purge by Tag 失效刷新）。
+    </div>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">ESSL-07</span>4 列表页缓存矩阵（TTL / Cache Tag / Cache Key）</div>
+        <span class="badge pass">核心缓存</span>
+      </div>
+      <div class="rule-body">
+        <table class="tbl">
+          <thead><tr><th>子规则</th><th>匹配</th><th>TTL</th><th>Cache Tag</th><th>Cache ID 构成</th></tr></thead>
+          <tbody>
+            <tr><td><strong>首页</strong></td><td><code>path=/</code></td><td><strong>6h</strong></td><td><code>bf-all</code> + <code>bf-home</code></td><td>cookies(currency, group_id, abTest)</td></tr>
+            <tr><td>├─ 带指定参数不缓存</td><td><code>?akaCache=nce</code></td><td><code>NO_STORE</code></td><td>—</td><td>—</td></tr>
+            <tr><td>└─ utm_source 缓存</td><td><code>?utm_source=google/facebook.com/tiktok</code></td><td>6h</td><td><code>bf-all</code> + <code>bf-home</code></td><td>cookies + query <code>utm_source</code></td></tr>
+            <tr><td><strong>列表 &amp; 详情页</strong></td><td><code>ext=html</code> 且 path ∉ <code>/activity/*</code></td><td><strong>6h</strong></td><td><code>bf-all</code> + <code>bf-listinfo</code></td><td>cookies + <strong><code>EXCLUDE_QUERY_PARAMS</code></strong>（34 个追踪参数外的其他所有 query）⚠</td></tr>
+            <tr><td>├─ 带指定参数不缓存</td><td><code>?akaCache=nce</code></td><td><code>NO_STORE</code></td><td>—</td><td>—</td></tr>
+            <tr><td>└─ utm_source 缓存</td><td><code>ext=html</code> + <code>utm_source=google/facebook.com/tiktok</code></td><td>6h</td><td><code>bf-all</code> + <code>bf-listinfo</code></td><td>cookies + query <code>utm_source</code></td></tr>
+            <tr><td><strong>博客页面</strong></td><td><code>path=/blog/*</code></td><td><strong>365d</strong></td><td><code>bf-blog</code></td><td>cookies + query <code>page</code></td></tr>
+            <tr><td>├─ 带指定参数不缓存</td><td><code>?akaCache=nce</code></td><td><code>NO_STORE</code></td><td>—</td><td>—</td></tr>
+            <tr><td>└─ utm_source 缓存</td><td><code>?utm_source=google/facebook.com/tiktok</code></td><td>365d</td><td><code>bf-blog</code></td><td>cookies + query <code>page</code> + <code>utm_source</code></td></tr>
+            <tr><td><strong>活动页</strong></td><td><code>path=/activity/* 或 /activity-*</code></td><td><strong>6h</strong></td><td><code>bf-all</code> + <code>bf-activity</code></td><td>cookies</td></tr>
+            <tr><td>├─ 带指定参数不缓存</td><td><code>?akaCache=nce</code></td><td><code>NO_STORE</code></td><td>—</td><td>—</td></tr>
+            <tr><td>└─ utm_source 缓存</td><td><code>?utm_source=google/facebook.com/tiktok</code></td><td>6h</td><td><code>bf-all</code> + <code>bf-activity</code></td><td>cookies + <code>utm_source</code></td></tr>
+            <tr><td><strong>/static/</strong></td><td><code>path=/static/*</code></td><td><strong>1d</strong></td><td>—</td><td>普通请求<strong>只按 path</strong>；若带 query <code>LT1RVf0XvMD1A78LUGJ2JvcSkHTKq8vb</code> 则拆版本（optional=true）</td></tr>
+          </tbody>
+        </table>
+        <div class="callout warn"><code>?akaCache=nce</code> 是全局<strong>绕过缓存</strong>的 backdoor —— 调试或手动刷新时可用。</div>
+
+        <h4 class="mt-lg">列表&amp;详情页 cacheId 的 EXCLUDE 列表（34 个追踪参数）</h4>
+        <p>这些参数<strong>不会</strong>进入 cache key（命中同一缓存版本），防止追踪参数污染缓存：</p>
+<pre class="code" data-label="EXCLUDE_QUERY_PARAMS · 34 个">gad_source, utm_source, utm_medium, utm_campaign, utm_content, utm_term,
+utm_expid, utm_referrer, gclid, cx, ie, cof, siteurl, aid, campaign_id,
+fbclid, rfsn, subid, msclkid, fclid, rlid, sscid, track_xid, wtbap,
+tagtag_uid, spm, wtbae, message_id, mobile, firstname, lastname, crm_spm,
+srsltid, brid, afsrc</pre>
+        <div class="callout"><strong>注意</strong> cookie（currency, group_id, abTest）和"utm_source=google/facebook/tiktok 子分支"是<strong>并列</strong>的两套 cacheId 附加；当 utm_source 命中白名单时，会同时参与拆版本。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ §8 Accelerate delivery ============ -->
+  <section id="sec-8">
+    <h2><span class="chapter-num">§8</span> Accelerate delivery</h2>
+    <ul>
+      <li>HTTP/2：启用</li>
+      <li>HTTP/3：启用（<code>enhancedAkamaiProtocol</code>）</li>
+      <li>Adaptive Acceleration（MPulse 数据驱动）：Push / Preconnect / Preload 开；A/B Logic 关闭</li>
+      <li>Prefetch / DNS Async Refresh：启用</li>
+    </ul>
+  </section>
+
+  <!-- ============ §9 Strengthen security ============ -->
+  <section id="sec-9">
+    <h2><span class="chapter-num">§9</span> Strengthen security（CDN 层）</h2>
+    <div class="callout">
+      <strong>注：</strong><strong>WAF / Bot</strong> 的实际规则由独立的 Application Security 配置 <code>Security Configuration</code> (id 89613) 管理，本 Property 仅做 CDN 层的基础头处理。详见 <a href="./20-waf.html">Module 20 · WAF</a>。
+    </div>
+    <table class="tbl">
+      <thead><tr><th>子规则</th><th>行为</th></tr></thead>
+      <tbody>
+        <tr><td>Allowed methods / POST</td><td><code>allowPost: enabled=true, allowWithoutContentLength=false</code></td></tr>
+        <tr><td>Obfuscate backend info</td><td>删响应头 <code>X-Powered-By</code>、<code>Server</code></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ============ §10 Increase availability ============ -->
+  <section id="sec-10">
+    <h2><span class="chapter-num">§10</span> Increase availability</h2>
+    <ul>
+      <li>Site Failover：<strong>enabled=false</strong>（未启用失败切源） → 源站故障时 CDN 不做兜底。</li>
+    </ul>
+  </section>
+
+  <!-- ============ §11 Minimize payload ============ -->
+  <section id="sec-11">
+    <h2><span class="chapter-num">§11</span> Minimize payload</h2>
+    <ul>
+      <li><code>gzipResponse: behavior=ALWAYS</code> → 对所有响应始终压缩（满足 Cache-Control 的前提下）</li>
+    </ul>
+  </section>
+
+  <!-- ============ §12 Redirect ============ -->
+  <section id="sec-12">
+    <h2><span class="chapter-num">§12</span> Redirect（3 条）</h2>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">ESSL-12a</span>① Redirect to HTTPS（301）</div>
+        <span class="badge pass">301</span>
+      </div>
+      <div class="rule-body">
+<pre class="code" data-label="条件 → 动作">proto=HTTP AND requestType=CLIENT_REQ
+→ 301 HTTPS://SAME_HOST/SAME_PATH（query APPEND）</pre>
+      </div>
+    </div>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">ESSL-12b</span>② Default PC → Mobile（302）</div>
+        <span class="badge warn">302 + UA 白名单</span>
+      </div>
+      <div class="rule-body">
+<pre class="code" data-label="条件 → 动作">host = www.beautyforever.com
+AND deviceCharacteristic[IS_MOBILE] = true            ← Akamai 内置 UA/device 判定
+AND UA NOT IN [
+      "LqPassWaf/851.3",
+      "LqPassWaf/851.3 (it; Categraf)"                ← 内部 WAF 放行 UA，不跳转
+    ]
+AND ext NOT IN ["js", "css"]                          ← 静态资源不跳转
+→ 302 https://m.beautyforever.com/SAME_PATH （query APPEND）</pre>
+      </div>
+    </div>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">ESSL-12c</span>③ Default Mobile → PC（302）</div>
+        <span class="badge warn">302 + Apple Pay 白名单</span>
+      </div>
+      <div class="rule-body">
+<pre class="code" data-label="条件 → 动作">host = m.beautyforever.com
+AND deviceCharacteristic[IS_MOBILE] = false           ← UA 被判定为 PC
+AND UA NOT IN [
+      "LqPassWaf/851.3",
+      "LqPassWaf/851.3 (it; Categraf)"
+    ]
+AND path NOT MATCHES [                                ← 苹果支付通道验证不跳转
+      "/.well-known/apple-developer-merchantid-domain-association.txt"
+    ]
+AND ext NOT IN ["js", "css"]
+→ 302 https://www.beautyforever.com/SAME_PATH （query APPEND）</pre>
+      </div>
+    </div>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">ESSL-12k</span>关键点（迁移必保留）</div>
+        <span class="badge info">迁移 checklist</span>
+      </div>
+      <div class="rule-body">
+        <ol>
+          <li><strong>302（不是 301）</strong> —— 便于 UA/设备判定变化时 SEO/浏览器快速回退</li>
+          <li><strong><code>LqPassWaf/851.3</code> UA 白名单</strong> —— 用于内部 WAF/健康检查/性能采集（含 Categraf 变体），不跳转避免影响探测</li>
+          <li><strong><code>/.well-known/apple-developer-merchantid-domain-association.txt</code> 路径白名单</strong> —— 苹果 Apple Pay 域名注册校验，必须能在 m 域名直接返回 200，不可被重定向</li>
+          <li><strong><code>js/css</code> 扩展名白名单</strong> —— 静态资源走 UA 判定会错判，不跳转</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ §13 SureRoute ============ -->
+  <section id="sec-13">
+    <h2><span class="chapter-num">§13</span> SureRoute</h2>
+    <ul>
+      <li>启用（仅 <code>hostname=www/m</code>）</li>
+      <li><code>type=PERFORMANCE</code>（动态优化路由）</li>
+      <li><code>toHostStatus=INCOMING_HH</code>（使用 incoming host header）</li>
+      <li><code>raceStatTtl=30m</code></li>
+      <li><code>forceSslForward=false</code></li>
+      <li>Test Object 路径：<code>/akamai/sureroute...</code> （完整值见 raw JSON）</li>
+    </ul>
+  </section>
+
+  <!-- ============ §14 XFF ============ -->
+  <section id="sec-14">
+    <h2><span class="chapter-num">§14</span> XFF 链路（客户端真实 IP）</h2>
+    <ul>
+      <li><code>PMUSER_CLIENT_IP</code> 变量：
+        <ul>
+          <li>Edge 节点：<code>{{builtin.AK_CLIENT_REAL_IP}}</code></li>
+          <li>Parent 节点：从请求头 <code>x-authentic-ip</code> 提取</li>
+        </ul>
+      </li>
+      <li>用于回源时携带可信的原始客户端 IP（防 L7 代理丢失）</li>
+    </ul>
+  </section>
+
+  <!-- ============ §15 SEO tuning ============ -->
+  <section id="sec-15">
+    <h2><span class="chapter-num">§15</span> SEO tuning</h2>
+    <ul>
+      <li><code>PMUSER_TRIGGERED_RULES = {{builtin.AK_FIREWALL_TRIGGERED_RULES}}</code> —— 把 WAF 触发规则号暴露给 Nuxt 回源，业务侧可基于此做 SEO 降级。</li>
+    </ul>
+  </section>
+
+  <!-- ============ §16 DataStream ============ -->
+  <section id="sec-16">
+    <h2><span class="chapter-num">§16</span> DataStream（DS2 日志）</h2>
+    <ul>
+      <li>启用 <code>datastream</code> 行为（Add DS2 分支）</li>
+      <li>配合 <code>Augment insights</code> 的日志子规则，原始请求 + 响应明细会写到 Akamai DataStream</li>
+    </ul>
+  </section>
+
+  <!-- ============ §17 自定义头 ============ -->
+  <section id="sec-17">
+    <h2><span class="chapter-num">§17</span> 自定义头</h2>
+    <ul>
+      <li><strong>指定回源请求头</strong>：<code>modifyOutgoingRequestHeader</code> 给源站加自定义头（具体值在 raw JSON 的 <code>options</code>）</li>
+      <li><strong>timing-allow-origin</strong>：响应加 <code>Timing-Allow-Origin: *</code>（给 mPulse RUM 跨域采集用）</li>
+      <li><strong>图片响应头</strong>：图片扩展名响应加 <code>Cache-Control</code> 头，downstream TTL 365d</li>
+    </ul>
+  </section>
+
+  <!-- ============ §18 Advanced ============ -->
+  <section id="sec-18">
+    <h2><span class="chapter-num">§18</span> Advanced</h2>
+    <ul>
+      <li>末尾含 <code>advanced</code> 行为（自定义 XML metadata）——未解析，视为"黑盒"扩展。迁移时需要取出 XML 源码核对；raw JSON 内可查。</li>
+    </ul>
+  </section>
+
+  <!-- ============ §19 Risks ============ -->
+  <section id="sec-19">
+    <h2><span class="chapter-num">§19</span> 值得留意 / 风险点</h2>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">ESSL-19</span>5 大迁移风险清单</div>
+        <span class="badge warn">Risk</span>
+      </div>
+      <div class="rule-body">
+        <ol>
+          <li><strong>HTML 默认 NO_STORE，但页面缓存 override 了首页/列表/详情/博客/活动</strong> —— 迁移 AWS 时需要逐路径复刻 TTL 矩阵，不能只按扩展名判定。</li>
+          <li><strong>Cache Key 含 cookie（currency/group_id/abTest）</strong> —— 如果换成 CloudFront，需要用 CloudFront Functions 或 Lambda@Edge 规范化 cookie 后作为缓存键的一部分；原生 CloudFront 不能直接拿任意 Cookie 入缓存键。</li>
+          <li><strong><code>?akaCache=nce</code> 绕过缓存是 Akamai 专用约定</strong>，迁移后需要在新 CDN 保留等价 backdoor。</li>
+          <li><strong>Site Failover 关闭</strong> —— 源站挂掉会直接 502，业务层未做兜底。</li>
+          <li><strong>Advanced XML</strong> —— 未解析，迁移前必须人工审阅。</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <div>
+    Akamai 配置调研 · Module 10 · Property beautyforever.com_essl v62 · 2026-04-21<br>
+    源文档：<code>../doc/10-property-beautyforever-essl.md</code> · 原始 JSON：<code>../raw/essl_rules.json</code>、<code>../raw/essl_hostnames.json</code> · Keith · AWS Solutions Architect
+  </div>
+</footer>
+
+<script src="./assets/app.js" defer></script>
+
+</body>
+</html>

@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>模块 90 · Dynamic / Static Analysis — Akamai · beautyforever.com</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./assets/style.css" />
+</head>
+<body>
+<nav class="topnav">
+  <div class="brand"><span class="dot">●</span> Akamai · beautyforever.com</div>
+  <div class="nav-links">
+    <a href="./index.html">Home</a>
+    <a href="./00-account.html">00 Account</a>
+    <a href="./10-property-essl.html">10 Property ESSL</a>
+    <a href="./11-property-api.html">11 Property API</a>
+    <a href="./20-waf.html">20 WAF</a>
+    <a href="./30-domain-www.html">30 Domain www</a>
+    <a href="./31-domain-m.html">31 Domain m</a>
+    <a href="./32-domain-api.html">32 Domain api</a>
+    <a href="./40-ops-verification.html">40 Ops Verify</a>
+    <a href="./90-dynamic-static.html" class="active">90 Dyn/Static</a>
+    <a href="./99-queries.html">99 Queries</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="hero-inner">
+    <span class="hero-badge">Module 90 · Dynamic / Static Analysis</span>
+    <h1><span class="accent">动静态</span>请求分析（核心结论）</h1>
+    <p class="subtitle">
+      问题：<code>www.beautyforever.com</code>、<code>m.beautyforever.com</code>、<code>api.beautyforever.com</code>
+      这三个域名是否都是动态请求？判断依据：Akamai Property Manager 规则树中的
+      <code>caching</code> behavior、<code>cacheId</code>、<code>cacheKeyQueryParams</code>、<code>downstreamCache</code> 组合，以及源站架构（ALB 名称、路径模式）。
+    </p>
+    <div class="meta">
+      <span><strong>域名</strong> 3 个</span>
+      <span><strong>架构</strong> Nuxt SSR + Page Cache</span>
+      <span><strong>API</strong> 纯动态</span>
+      <span><strong>建议</strong> curl / DataStream 验证</span>
+    </div>
+  </div>
+</header>
+
+<main class="container">
+
+  <div class="toc">
+    <h3>Table of Contents</h3>
+    <ul>
+      <li><a href="#answer">一句话答案</a></li>
+      <li><a href="#matrix">§1 判定矩阵</a></li>
+      <li><a href="#detail">§2 详细推导</a></li>
+      <li><a href="#detail-www">§2.① www / m — 混合偏动态</a></li>
+      <li><a href="#detail-api">§2.② api — 纯动态</a></li>
+      <li><a href="#aws">§3 对 AWS 迁移的影响</a></li>
+      <li><a href="#verify">§4 验证建议</a></li>
+      <li><a href="#core">核心回答</a></li>
+    </ul>
+  </div>
+
+  <!-- ============ 一句话答案 ============ -->
+  <section id="answer">
+    <h2>一句话答案</h2>
+    <div class="callout" style="border-left:4px solid #e3b341;background:rgba(227,179,65,.12)">
+      <strong>不完全是。<code>api.beautyforever.com</code> 是纯动态；<code>www</code> / <code>m.beautyforever.com</code> 是“动静混合、偏动态”</strong>
+      —— HTML 页面来自 Nuxt SSR，但部分路径（首页 / 列表 / 详情 / 博客 / 活动）在边缘按 cookie 分版本缓存 6h–365d；静态资源（css/js/字体/图片）长缓存 365d。
+    </div>
+  </section>
+
+  <!-- ============ §1 判定矩阵 ============ -->
+  <section id="matrix">
+    <h2><span class="chapter-num">§1</span> 判定矩阵</h2>
+    <p class="section-intro">3 域名 × 动静态信号一览：默认 caching 行为、HTML 是否缓存、静态资源是否缓存、最终判定。</p>
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th>域名</th>
+          <th>默认 caching 行为</th>
+          <th>HTML 是否缓存</th>
+          <th>静态资源是否缓存</th>
+          <th>动静态判定</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>www.beautyforever.com</code></td>
+          <td><code>NO_STORE</code>（但被 Page Caching 覆盖）</td>
+          <td><strong>部分路径缓存 6h–365d</strong></td>
+          <td>365d</td>
+          <td><strong>混合偏动态</strong></td>
+        </tr>
+        <tr>
+          <td><code>m.beautyforever.com</code></td>
+          <td>同上（共享 Property）</td>
+          <td>同上</td>
+          <td>同上</td>
+          <td><strong>混合偏动态</strong></td>
+        </tr>
+        <tr>
+          <td><code>api.beautyforever.com</code></td>
+          <td><strong><code>NO_STORE</code></strong>（Sureroute&amp;Caching 再次兜底）</td>
+          <td>1d（几乎不命中）</td>
+          <td>30d–365d（几乎不命中）</td>
+          <td><strong style="color:var(--warn)">纯动态</strong></td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ============ §2 详细推导 ============ -->
+  <section id="detail">
+    <h2><span class="chapter-num">§2</span> 详细推导</h2>
+    <p class="section-intro">按域名分两小节。每节先列源站架构信号 + 规则信号，再汇总 rule 卡结论。</p>
+
+    <!-- ========= §2.① www/m ========= -->
+    <section id="detail-www">
+      <h3>① <code>www</code> / <code>m.beautyforever.com</code> —— 混合偏动态</h3>
+
+      <div class="callout">
+        <strong>源站架构信号：</strong>
+        <ul>
+          <li>Origin hostname 含 <code>nuxt</code> → <strong>Nuxt.js SSR 框架</strong>（Vue 服务端渲染）</li>
+          <li>每个 HTML 请求理论上都会渲染、不是静态导出</li>
+        </ul>
+      </div>
+
+      <h4 class="mt-lg">Akamai 规则信号</h4>
+      <table class="tbl">
+        <thead>
+          <tr><th>信号</th><th>含义</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>Offload origin / HTML pages: caching=NO_STORE</code></td><td>Akamai 侧<strong>默认不缓存 HTML</strong></td></tr>
+          <tr><td><code>Cache Tag &amp; Page Caching</code> 节点覆盖首页 / 列表 / 详情 / 博客 / 活动页</td><td><strong>关键路径被边缘缓存化</strong></td></tr>
+          <tr><td><code>cacheId</code> 含 cookie <code>currency</code>、<code>group_id</code>、<code>abTest</code></td><td><strong>按用户群体 × 货币 × AB 实验拆版本</strong></td></tr>
+          <tr><td><code>?akaCache=nce</code> 一律强制 <code>NO_STORE</code></td><td>绕缓存 backdoor（调试）</td></tr>
+          <tr><td>HTML 默认路径（<code>.htm/.php/.jsp/.aspx</code>）NO_STORE</td><td>非预设路径走动态</td></tr>
+          <tr><td>个性化路径（登录、购物车、搜索、结算）——配置里没有显式 cache 规则</td><td>走默认 NO_STORE</td></tr>
+          <tr><td>静态资源 css/js/字体/图片 365d</td><td>纯静态长缓存</td></tr>
+          <tr><td><code>/static/*</code> 含版本 token</td><td>静态资产长缓存</td></tr>
+        </tbody>
+      </table>
+
+      <!-- DYN-01 -->
+      <div class="rule mt-lg">
+        <div class="rule-header">
+          <div class="rule-title"><span class="rule-id">DYN-01</span>动态部分（走源站）</div>
+          <span class="badge warn">动态</span>
+        </div>
+        <div class="rule-body">
+          <p>以下请求绕过边缘缓存、每次回 Nuxt SSR：</p>
+          <ul>
+            <li>用户态接口（登录、购物车、账户、搜索结果、结算、支付回调）</li>
+            <li>所有带 <code>?akaCache=nce</code> 的请求</li>
+            <li>非预设路径（<code>.htm/.php/.jsp/.aspx</code> 和其他自定义路由）</li>
+            <li><code>currency / group_id / abTest</code> 冷门组合（cache miss 后首次请求）</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- DYN-02 -->
+      <div class="rule">
+        <div class="rule-header">
+          <div class="rule-title"><span class="rule-id">DYN-02</span>静态部分（边缘缓存）</div>
+          <span class="badge pass">缓存</span>
+        </div>
+        <div class="rule-body">
+          <p>以下路径被 Akamai Page Caching 覆盖，按 host / path / cookie / 指定 query 分版本缓存：</p>
+          <table class="tbl">
+            <thead><tr><th>路径</th><th>TTL</th></tr></thead>
+            <tbody>
+              <tr><td>首页 <code>/</code></td><td>6h</td></tr>
+              <tr><td>HTML 列表 / 详情</td><td>6h</td></tr>
+              <tr><td><code>/blog/*</code></td><td>365d</td></tr>
+              <tr><td><code>/activity/*</code></td><td>6h</td></tr>
+              <tr><td><code>/static/*</code></td><td>1d</td></tr>
+              <tr><td>CSS / JS</td><td>365d</td></tr>
+              <tr><td>图片</td><td>365d</td></tr>
+              <tr><td>字体</td><td>365d</td></tr>
+            </tbody>
+          </table>
+          <div class="callout warn mt-lg">
+            <strong>关键结论：</strong>这不是“静态网站”——这是<strong>“带边缘页面缓存的 SSR 动态站”</strong>。
+            Nuxt 渲染的 HTML 在边缘被按（host, path, cookies, 指定 query）分版本缓存；一旦 TTL 到期或 cookie 组合冷门，依然要回 origin 做 SSR。
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========= §2.② api ========= -->
+    <section id="detail-api">
+      <h3>② <code>api.beautyforever.com</code> —— 纯动态</h3>
+
+      <div class="callout">
+        <strong>源站架构信号：</strong>
+        <ul>
+          <li>Origin hostname 含 <code>api</code> → API 服务</li>
+          <li>典型 REST / JSON API，per-user per-request 逻辑</li>
+        </ul>
+      </div>
+
+      <h4 class="mt-lg">Akamai 规则信号</h4>
+      <table class="tbl">
+        <thead>
+          <tr><th>信号</th><th>含义</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>Offload origin</code>: caching=<strong><code>NO_STORE</code></strong></td><td>默认不缓存</td></tr>
+          <tr><td><code>Sureroute&amp;Caching</code>: caching=<strong><code>NO_STORE</code></strong>（又一次）</td><td>兜底防止意外继承</td></tr>
+          <tr><td>所有扩展名分桶规则</td><td>对 API 路径几乎不命中</td></tr>
+          <tr><td><code>cacheId</code> 含 cookie <code>customer_group</code>、<code>currency</code></td><td>即使源站说可缓存，也按用户组 + 货币拆版本 → 命中率天然低</td></tr>
+          <tr><td><code>cacheKeyQueryParams=IGNORE</code> 列表含 20+ 广告追踪参数</td><td>防止追踪参数把缓存键污染成无限版本（说明<strong>实际有缓存需求的 GET API 存在</strong>，但占比很小）</td></tr>
+          <tr><td><code>breakConnection: enabled=true</code></td><td>故障注入逻辑在线（不影响缓存判定，但说明 API 层上线策略比较积极）</td></tr>
+        </tbody>
+      </table>
+
+      <!-- DYN-03 -->
+      <div class="rule mt-lg">
+        <div class="rule-header">
+          <div class="rule-title"><span class="rule-id">DYN-03</span>API 域名判定：纯动态</div>
+          <span class="badge warn">纯动态</span>
+        </div>
+        <div class="rule-body">
+          <ul>
+            <li><strong>动态部分（走源站）</strong>：<strong>≥ 99% 的 API 请求</strong>。所有业务 API（商品、购物车、用户、结算）默认都是回源。</li>
+            <li><strong>可能缓存部分</strong>：仅限源站明确返回 <code>Cache-Control: public, max-age=…</code> 的 GET 接口（如商品分类树、CMS 配置）。若存在，会按 <code>customer_group + currency</code> 拆版本。</li>
+          </ul>
+          <div class="callout warn mt-lg">
+            <strong>判定：API 域名是纯动态。</strong> 任何迁移方案都要按“每次请求都回源”假设做容量、延迟、成本测算。
+          </div>
+        </div>
+      </div>
+    </section>
+  </section>
+
+  <!-- ============ §3 对 AWS 迁移的影响 ============ -->
+  <section id="aws">
+    <h2><span class="chapter-num">§3</span> 对 AWS 迁移方案的影响</h2>
+    <p class="section-intro">迁移到 CloudFront / ALB 的两个域名群需要分别关注的工程点。</p>
+    <table class="tbl">
+      <thead>
+        <tr><th>域名</th><th>迁移到 CloudFront / ALB 的关注点</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>www</code> / <code>m.beautyforever.com</code></td>
+          <td>
+            <strong>必须复刻 cookie-based cache key</strong>（<code>currency / group_id / abTest</code>），原生 CloudFront 不支持任意 cookie 进缓存键 → 需要
+            <strong>CloudFront Functions / Lambda@Edge</strong> 规范化。保留 <code>?akaCache=nce</code> bypass backdoor。
+            按路径复刻 TTL 矩阵（<code>/blog/*=365d</code>、<code>/=6h</code>、<code>/activity/*=6h</code>、<code>/static/*=1d</code>、静态资源 365d）。
+          </td>
+        </tr>
+        <tr>
+          <td><code>api.beautyforever.com</code></td>
+          <td>
+            <strong>容量规划要按“100% 回源”算</strong>（默认 NO_STORE，极少命中）。保留 <code>customer_group + currency</code> cookie-based cache key 以防丢少量已缓存接口的命中率。
+            剔除广告追踪参数（<code>utm_* / gclid / fbclid / ...</code>）出缓存键。修 <code>" x-authentic-ip"</code> 前导空格 bug。
+            决定是否保留 <code>breakConnection</code> 故障注入。
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ============ §4 验证建议 ============ -->
+  <section id="verify">
+    <h2><span class="chapter-num">§4</span> 验证建议（Team Agent）</h2>
+    <p class="section-intro">若要对以上判定做一手验证，按以下 3 条 rule 卡执行。</p>
+
+    <!-- VERIFY-01 -->
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">VERIFY-01</span>抓 cache hit ratio（DataStream）</div>
+        <span class="badge info">metric</span>
+      </div>
+      <div class="rule-body">
+        <p>从 Akamai DataStream（已启用）拉 <code>www.beautyforever.com</code> 和 <code>api.beautyforever.com</code> 的 24h <code>offload rate</code>。</p>
+<pre class="code" data-label="shell"># 从 Akamai Control Center → DataStream 2 拉取
+# 指标：offload rate (24h) by hostname
+# 对象：www.beautyforever.com / m.beautyforever.com / api.beautyforever.com</pre>
+        <div class="expect"><strong>预期：</strong>www / m 40–80%（静态资源拉高），api &lt; 10%。</div>
+      </div>
+    </div>
+
+    <!-- VERIFY-02 -->
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">VERIFY-02</span>抓响应头验证（curl -I）</div>
+        <span class="badge info">smoke</span>
+      </div>
+      <div class="rule-body">
+        <p>查看 <code>X-Cache:</code> / <code>X-Cache-Key:</code> / <code>Cache-Control:</code> 分布，对照 §1 矩阵。</p>
+<pre class="code" data-label="shell">curl -sI 'https://www.beautyforever.com/' | grep -Ei 'cache|x-cache|x-akamai'
+curl -sI 'https://www.beautyforever.com/blog/foo' | grep -Ei 'cache|x-akamai'
+curl -sI 'https://api.beautyforever.com/v1/products' | grep -Ei 'cache|x-akamai'</pre>
+        <div class="expect"><strong>预期：</strong>www 根 + /blog 返回 <code>TCP_HIT_</code> 或短 TTL <code>max-age</code>；api 返回 <code>TCP_MISS_</code> + <code>NO_STORE</code>。</div>
+      </div>
+    </div>
+
+    <!-- VERIFY-03 -->
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">VERIFY-03</span>走 <code>?akaCache=nce</code> 验证 backdoor</div>
+        <span class="badge info">backdoor</span>
+      </div>
+      <div class="rule-body">
+        <p>绕缓存 backdoor 是 Akamai 约定。迁移到 CloudFront 时要保留等价机制。</p>
+<pre class="code" data-label="shell">curl -sI 'https://www.beautyforever.com/?akaCache=nce' | grep -Ei 'cache'</pre>
+        <div class="expect"><strong>预期：</strong>应该一定 MISS（<code>X-Cache: TCP_MISS_</code> 或 <code>Cache-Control: no-store</code>）。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 核心回答 ============ -->
+  <section id="core">
+    <h2>核心回答</h2>
+    <div class="callout" style="border-left:4px solid #3fb950;background:rgba(63,185,80,.1)">
+      三个域名中，<strong>只有 <code>api.beautyforever.com</code> 是纯动态</strong>；
+      <code>www.beautyforever.com</code> 和 <code>m.beautyforever.com</code> 是
+      <strong>“SSR 动态 + 边缘页面缓存”的混合型</strong>——HTML 部分页面在边缘缓存 6h–365d，但源站仍是 Nuxt SSR，热点路径之外都要回源。
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <div>
+    Akamai 配置调研 · beautyforever.com · 2026-04-21<br>
+    源文档：<code>../doc/90-dynamic-static-analysis.md</code> · 原始 JSON：<code>../raw/*.json</code> · Keith · AWS Solutions Architect
+  </div>
+</footer>
+
+<script src="./assets/app.js" defer></script>
+
+</body>
+</html>

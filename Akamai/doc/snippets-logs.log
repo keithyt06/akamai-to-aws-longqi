@@ -1,0 +1,752 @@
+[2026-04-21T09:38:17.940] [INFO] devops-prov.factory - Switching account key to: 'undefined'
+[2026-04-21T09:38:17.941] [INFO] devops-prov.factory - Using credentials file: '/root/.edgerc', section: 'papi'
+[2026-04-21T09:38:17.942] [INFO] devops-prov.factory - need to create papi
+[2026-04-21T09:38:17.943] [INFO] devops-prov.openclient - Requesting: GET /papi/v1/properties/?contractId=ctr_V-4GARL4E&groupId=230665
+[2026-04-21T09:38:17.945] [INFO] devops-prov.edgegrid.auth - Unsigned authorization header: EG1-HMAC-SHA256 client_token=akab-25vbjix7hlb7mvdq-5i3asijmzu47elt5;access_token=akab-wreeb2qdtwedjpl3-4edtwmulhcgd4ali;timestamp=20260421T09:38:17+0000;nonce=17c65164-f1af-4eaf-a1de-ce6b143f2d02;
+
+[2026-04-21T09:38:17.945] [INFO] devops-prov.edgegrid.helpers - Body is ""
+[2026-04-21T09:38:17.946] [DEBUG] devops-prov.edgegrid.helpers - PREPARED BODY LENGTH 0
+[2026-04-21T09:38:17.946] [INFO] devops-prov.edgegrid.helpers - Data to sign: "GET	https	akab-cy5rj3csv3v7dn24-d3vlgpdgxrfscikd.luna.akamaiapis.net	/papi/v1/properties/?contractId=ctr_V-4GARL4E&groupId=230665			EG1-HMAC-SHA256 client_token=akab-25vbjix7hlb7mvdq-5i3asijmzu47elt5;access_token=akab-wreeb2qdtwedjpl3-4edtwmulhcgd4ali;timestamp=20260421T09:38:17+0000;nonce=17c65164-f1af-4eaf-a1de-ce6b143f2d02;" 
+
+[2026-04-21T09:38:17.946] [INFO] devops-prov.edgegrid.helpers - Signing key: P0mTd50tzl7ODLH3pDWYhmmlv8bIIm/y2fZAjDP4RWE=
+
+[2026-04-21T09:38:17.946] [INFO] devops-prov.edgegrid.auth - Signed authorization header: EG1-HMAC-SHA256 client_token=akab-25vbjix7hlb7mvdq-5i3asijmzu47elt5;access_token=akab-wreeb2qdtwedjpl3-4edtwmulhcgd4ali;timestamp=20260421T09:38:17+0000;nonce=17c65164-f1af-4eaf-a1de-ce6b143f2d02;signature=C+yA87KMwN4Aq2tldKh1wr5pOY67YeD0OghI/EVzy6s=
+
+[2026-04-21T09:38:17.973] [INFO] devops-prov.edgegrid - request {
+  debugId: 1,
+  uri: 'https://akab-cy5rj3csv3v7dn24-d3vlgpdgxrfscikd.luna.akamaiapis.net/papi/v1/properties/?contractId=ctr_V-4GARL4E&groupId=230665',
+  method: 'GET',
+  headers: {
+    'X-User-Agent': 'Akamai-PD; Version=0.7.8-RELEASE;pm-cli;',
+    'User-Agent': 'Akamai-PD; Version=0.7.8-RELEASE;pm-cli;',
+    Authorization: 'EG1-HMAC-SHA256 client_token=akab-25vbjix7hlb7mvdq-5i3asijmzu47elt5;access_token=akab-wreeb2qdtwedjpl3-4edtwmulhcgd4ali;timestamp=20260421T09:38:17+0000;nonce=17c65164-f1af-4eaf-a1de-ce6b143f2d02;signature=C+yA87KMwN4Aq2tldKh1wr5pOY67YeD0OghI/EVzy6s=',
+    host: 'akab-cy5rj3csv3v7dn24-d3vlgpdgxrfscikd.luna.akamaiapis.net'
+  }
+}
+[2026-04-21T09:38:18.866] [INFO] devops-prov.edgegrid - response {
+  debugId: 1,
+  headers: {
+    'content-type': 'application/json',
+    'x-trace-id': 'a090a68d803bc832',
+    'x-ids-session-id': '5fc0284f-f38a-4fcd-ab72-34af9f1bbcda, 5fc0284f-f38a-4fcd-ab72-34af9f1bbcda',
+    'x-ratelimit-limit': '1000',
+    'x-ratelimit-remaining': '999',
+    'x-limit-properties-per-contract-limit': '1000',
+    'x-limit-properties-per-contract-remaining': '986',
+    'cache-control': 'no-store',
+    vary: 'accept-encoding',
+    'papi-cache-status': 'CACHE_MISS',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains',
+    'content-length': '5168',
+    date: 'Tue, 21 Apr 2026 09:38:18 GMT',
+    connection: 'keep-alive'
+  },
+  statusCode: 200,
+  body: '{\n' +
+    '  "properties" : {\n' +
+    '    "items" : [ {\n' +
+    '      "accountId" : "act_F-AC-4891758",\n' +
+    '      "contractId" : "ctr_V-4GARL4E",\n' +
+    '      "groupId" : "grp_230665",\n' +
+    '      "propertyId" : "prp_910841",\n' +
+    '      "propertyName" : "beautyforever.com_essl",\n' +
+    '      "latestVersion" : 63,\n' +
+    '      "stagingVersion" : 63,\n' +
+    '      "productionVersion" : 62,\n' +
+    '      "assetId" : "aid_11153387"\n' +
+    '    }, {\n' +
+    '      "accountId" : "act_F-AC-4891758",\n' +
+    '      "contractId" : "ctr_V-4GARL4E",\n' +
+    '      "groupId" : "grp_230665",\n' +
+    '      "propertyId" : "prp_1093535",\n' +
+    '      "propertyName" : "sapi.juliahair.com",\n' +
+    '      "latestVersion" : 6,\n' +
+    '      "stagingVersion" : 6,\n' +
+    '      "productionVersion" : 6,\n' +
+    '      "assetId" : "aid_11379976"\n' +
+    '    }, {\n' +
+    '      "accountId" : "act_F-AC-4891758",\n' +
+    '      "contractId" : "ctr_V-4GARL4E",\n' +
+    '      "groupId" : "grp_230665",\n' +
+    '      "propertyId" : "prp_1093537",\n' +
+    '      "propertyName" : "sapi.nadula.com",\n' +
+    '      "latestVersion" : 4,\n' +
+    '      "stagingVersion" : 4,\n' +
+    '      "productionVersion" : 4,\n' +
+    '      "assetId" : "aid_11379978"\n' +
+    '    }, {\n' +
+    '      "accountId" : "act_F-AC-4891758",\n' +
+    '      "contractId" : "ctr_V-4GARL4E",\n' +
+    '      "groupId" : "grp_230665",\n' +
+    '      "propertyId" : "prp_1255583",\n' +
+    '      "propertyName" : "tm.unice.com",\n' +
+    '      "latestVersion" : 8,\n' +
+    '      "stagingVersion" : 8,\n' +
+    '      "productionVersion" : 7,\n' +
+    '      "assetId" : "aid_11540570"\n' +
+    '    }, {\n' +
+    '      "accountId" : "act_F-AC-4891758",\n' +
+    '      "contractId" : "ctr_V-4GARL4E",\n' +
+    '      "groupId" : "grp_230665",\n' +
+    '      "propertyId" : "prp_1093531",\n' +
+    '      "propertyName" : "sapi.unice.com",\n' +
+    '      "latestVersion" : 5,\n' +
+    '      "stagingVersion" : 5,\n' +
+    '      "productionVersion" : 5,\n' +
+    '      "assetId" : "aid_11379969"\n' +
+    '    }, {\n' +
+    '      "accountId" : "act_F-AC-4891758",\n' +
+    '      "contractId" : "ctr_V-4GARL4E",\n' +
+    '      "groupId" : "grp_230665",\n' +
+    '      "propertyId" : "prp_883650",\n' +
+    '      "propertyName" : "beautyforever.com",\n' +
+    '      "latestVersion" : 36,\n' +
+    '      "stagingVersion" : null,\n' +
+    '      "productionVersion" : null,\n' +
+    '      "assetId" : "aid_11119717"\n' +
+    '    }, {\n' +
+    '      "accountId" : "act_F-AC-4891758",\n' +
+    '      "contractId" : "ctr_V-4GARL4E",\n' +
+    '      "groupId" : "grp_230665",\n' +
+    '      "propertyId" : "prp_1010833",\n' +
+    '      "propertyName" : "unice.com",\n' +
+    '      "latestVersion" : 175,\n' +
+    '      "stagingVersion" : 175,\n' +
+    '      "productionVersion" : 175,\n' +
+    '      "assetId" : "aid_11276609"\n' +
+    '    }, {\n' +
+    '      "accountId" : "act_F-AC-4891758",\n' +
+    '      "contractId" : "ctr_V-4GARL4E",\n' +
+    '      "groupId" : "grp_230665",\n' +
+    '      "propertyId" : "prp_899790",\n' +
+    '      "propertyName" : "beautyforever.com_akamai_test",\n' +
+    '      "latestVersion" : 9,\n' +
+    '      "stagingVersion" : null,\n' +
+    '      "productionVersion" : null,\n' +
+    '      "assetId" : "aid_11138663"\n' +
+    '    }, {\n' +
+    '      "accountId" : "act_F-AC-4891758",\n' +
+    '      "contractId" : "ctr_V-4GARL4E",\n' +
+    '      "groupId" : "grp_230665",\n' +
+    '      "propertyId" : "prp_931346",\n' +
+    '      "propertyName" : "dev-velvethairextension.com",\n' +
+    '      "latestVersion" : 7,\n' +
+    '      "stagingVersion" : 7,\n' +
+    '      "productionVersion" : 7,\n' +
+    '      "assetId" : "aid_11178085"\n' +
+    '    }, {\n' +
+    '      "accountId" : "act_F-AC-4891758",\n' +
+    '      "contractId" : "ctr_V-4GARL4E",\n' +
+    '      "groupId" : "grp_230665",\n' +
+    '      "propertyId" : "prp_1198989",\n' +
+    '      "propertyName" : "fr.unice.com",\n' +
+    '      "latestVersion" : 12,\n' +
+    '      "stagingVersion" : 12,\n' +
+    '      "productionVersion" : 10,\n' +
+    '      "assetId" : "aid_11473504"\n' +
+    '    }, {\n' +
+    '      "accountId" : "act_F-AC-4891758",\n' +
+    '      "contractId" : "ctr_V-4GARL4E",\n' +
+    '      "groupId" : "grp_230665",\n' +
+    '      "propertyId" : "prp_1093527",\n' +
+    '      "propertyName" : "sapi.beautyforever.com",\n' +
+    '      "latestVersion" : 6,\n' +
+    '      "stagingVersion" : 6,\n' +
+    '      "productionVersion" : 6,\n' +
+    '      "assetId" : "aid_11379964"\n' +
+    '    }, {\n' +
+    '      "accountId" : "act_F-AC-4891758",\n' +
+    '      "contractId" : "ctr_V-4GARL4E",\n' +
+    '      "groupId" : "grp_230665",\n' +
+    '      "propertyId" : "prp_1026538",\n' +
+    '      "propertyName" : "juliahair.com",\n' +
+    '      "latestVersion" : 6,\n' +
+    '      "stagingVersion" : 6,\n' +
+    '      "productionVersion" : 6,\n' +
+    '      "assetId" : "aid_11296570"\n' +
+    '    }, {\n' +
+    '      "accountId" : "act_F-AC-4891758",\n' +
+    '      "contractId" : "ctr_V-4GARL4E",\n' +
+    '      "groupId" : "grp_230665",\n' +
+    '      "propertyId" : "prp_949019",\n' +
+    '      "propertyName" : "nadula.com",\n' +
+    '      "latestVersion" : 47,\n' +
+    '      "stagingVersion" : 47,\n' +
+    '      "productionVersion" : 46,\n' +
+    '      "assetId" : "aid_11199132"\n' +
+    '    }, {\n' +
+    '      "accountId" : "act_F-AC-4891758",\n' +
+    '      "contractId" : "ctr_V-4GARL4E",\n' +
+    '      "groupId" : "grp_230665",\n' +
+    '      "propertyId" : "prp_923813",\n' +
+    '      "propertyName" : "dev-beautyforever.com",\n' +
+    '      "latestVersion" : 51,\n' +
+    '      "stagingVersion" : 51,\n' +
+    '      "productionVersion" : 51,\n' +
+    '      "assetId" : "aid_11169041"\n' +
+    '    }, {\n' +
+    '      "accountId" : "act_F-AC-4891758",\n' +
+    '      "contractId" : "ctr_V-4GARL4E",\n' +
+    '      "groupId" : "grp_230665",\n' +
+    '      "propertyId" : "prp_956325",\n' +
+    '      "propertyName" : "api.beautyforever.com",\n' +
+    '      "latestVersion" : 11,\n' +
+    '      "stagingVersion" : 11,\n' +
+    '      "productionVersion" : 10,\n' +
+    '      "assetId" : "aid_11208151"\n' +
+    '    }, {\n' +
+    '      "accountId" : "act_F-AC-4891758",\n' +
+    '      "contractId" : "ctr_V-4GARL4E",\n' +
+    '      "groupId" : "grp_230665",\n' +
+    '      "propertyId" : "prp_1041097",\n' +
+    '      "propertyName" : "juliahair.com_new",\n' +
+    '      "latestVersion" : 40,\n' +
+    '      "stagingVersion" : 35,\n' +
+    '      "productionVersion" : 38,\n' +
+    '      "assetId" : "aid_11314867"\n' +
+    '    } ]\n' +
+    '  }\n' +
+    '}'
+}
+[2026-04-21T09:38:18.867] [INFO] devops-prov.openclient - Status code:  200
+[2026-04-21T09:38:18.867] [INFO] devops-prov.openclient - Body:  {
+  "properties" : {
+    "items" : [ {
+      "accountId" : "act_F-AC-4891758",
+      "contractId" : "ctr_V-4GARL4E",
+      "groupId" : "grp_230665",
+      "propertyId" : "prp_910841",
+      "propertyName" : "beautyforever.com_essl",
+      "latestVersion" : 63,
+      "stagingVersion" : 63,
+      "productionVersion" : 62,
+      "assetId" : "aid_11153387"
+    }, {
+      "accountId" : "act_F-AC-4891758",
+      "contractId" : "ctr_V-4GARL4E",
+      "groupId" : "grp_230665",
+      "propertyId" : "prp_1093535",
+      "propertyName" : "sapi.juliahair.com",
+      "latestVersion" : 6,
+      "stagingVersion" : 6,
+      "productionVersion" : 6,
+      "assetId" : "aid_11379976"
+    }, {
+      "accountId" : "act_F-AC-4891758",
+      "contractId" : "ctr_V-4GARL4E",
+      "groupId" : "grp_230665",
+      "propertyId" : "prp_1093537",
+      "propertyName" : "sapi.nadula.com",
+      "latestVersion" : 4,
+      "stagingVersion" : 4,
+      "productionVersion" : 4,
+      "assetId" : "aid_11379978"
+    }, {
+      "accountId" : "act_F-AC-4891758",
+      "contractId" : "ctr_V-4GARL4E",
+      "groupId" : "grp_230665",
+      "propertyId" : "prp_1255583",
+      "propertyName" : "tm.unice.com",
+      "latestVersion" : 8,
+      "stagingVersion" : 8,
+      "productionVersion" : 7,
+      "assetId" : "aid_11540570"
+    }, {
+      "accountId" : "act_F-AC-4891758",
+      "contractId" : "ctr_V-4GARL4E",
+      "groupId" : "grp_230665",
+      "propertyId" : "prp_1093531",
+      "propertyName" : "sapi.unice.com",
+      "latestVersion" : 5,
+      "stagingVersion" : 5,
+      "productionVersion" : 5,
+      "assetId" : "aid_11379969"
+    }, {
+      "accountId" : "act_F-AC-4891758",
+      "contractId" : "ctr_V-4GARL4E",
+      "groupId" : "grp_230665",
+      "propertyId" : "prp_883650",
+      "propertyName" : "beautyforever.com",
+      "latestVersion" : 36,
+      "stagingVersion" : null,
+      "productionVersion" : null,
+      "assetId" : "aid_11119717"
+    }, {
+      "accountId" : "act_F-AC-4891758",
+      "contractId" : "ctr_V-4GARL4E",
+      "groupId" : "grp_230665",
+      "propertyId" : "prp_1010833",
+      "propertyName" : "unice.com",
+      "latestVersion" : 175,
+      "stagingVersion" : 175,
+      "productionVersion" : 175,
+      "assetId" : "aid_11276609"
+    }, {
+      "accountId" : "act_F-AC-4891758",
+      "contractId" : "ctr_V-4GARL4E",
+      "groupId" : "grp_230665",
+      "propertyId" : "prp_899790",
+      "propertyName" : "beautyforever.com_akamai_test",
+      "latestVersion" : 9,
+      "stagingVersion" : null,
+      "productionVersion" : null,
+      "assetId" : "aid_11138663"
+    }, {
+      "accountId" : "act_F-AC-4891758",
+      "contractId" : "ctr_V-4GARL4E",
+      "groupId" : "grp_230665",
+      "propertyId" : "prp_931346",
+      "propertyName" : "dev-velvethairextension.com",
+      "latestVersion" : 7,
+      "stagingVersion" : 7,
+      "productionVersion" : 7,
+      "assetId" : "aid_11178085"
+    }, {
+      "accountId" : "act_F-AC-4891758",
+      "contractId" : "ctr_V-4GARL4E",
+      "groupId" : "grp_230665",
+      "propertyId" : "prp_1198989",
+      "propertyName" : "fr.unice.com",
+      "latestVersion" : 12,
+      "stagingVersion" : 12,
+      "productionVersion" : 10,
+      "assetId" : "aid_11473504"
+    }, {
+      "accountId" : "act_F-AC-4891758",
+      "contractId" : "ctr_V-4GARL4E",
+      "groupId" : "grp_230665",
+      "propertyId" : "prp_1093527",
+      "propertyName" : "sapi.beautyforever.com",
+      "latestVersion" : 6,
+      "stagingVersion" : 6,
+      "productionVersion" : 6,
+      "assetId" : "aid_11379964"
+    }, {
+      "accountId" : "act_F-AC-4891758",
+      "contractId" : "ctr_V-4GARL4E",
+      "groupId" : "grp_230665",
+      "propertyId" : "prp_1026538",
+      "propertyName" : "juliahair.com",
+      "latestVersion" : 6,
+      "stagingVersion" : 6,
+      "productionVersion" : 6,
+      "assetId" : "aid_11296570"
+    }, {
+      "accountId" : "act_F-AC-4891758",
+      "contractId" : "ctr_V-4GARL4E",
+      "groupId" : "grp_230665",
+      "propertyId" : "prp_949019",
+      "propertyName" : "nadula.com",
+      "latestVersion" : 47,
+      "stagingVersion" : 47,
+      "productionVersion" : 46,
+      "assetId" : "aid_11199132"
+    }, {
+      "accountId" : "act_F-AC-4891758",
+      "contractId" : "ctr_V-4GARL4E",
+      "groupId" : "grp_230665",
+      "propertyId" : "prp_923813",
+      "propertyName" : "dev-beautyforever.com",
+      "latestVersion" : 51,
+      "stagingVersion" : 51,
+      "productionVersion" : 51,
+      "assetId" : "aid_11169041"
+    }, {
+      "accountId" : "act_F-AC-4891758",
+      "contractId" : "ctr_V-4GARL4E",
+      "groupId" : "grp_230665",
+      "propertyId" : "prp_956325",
+      "propertyName" : "api.beautyforever.com",
+      "latestVersion" : 11,
+      "stagingVersion" : 11,
+      "productionVersion" : 10,
+      "assetId" : "aid_11208151"
+    }, {
+      "accountId" : "act_F-AC-4891758",
+      "contractId" : "ctr_V-4GARL4E",
+      "groupId" : "grp_230665",
+      "propertyId" : "prp_1041097",
+      "propertyName" : "juliahair.com_new",
+      "latestVersion" : 40,
+      "stagingVersion" : 35,
+      "productionVersion" : 38,
+      "assetId" : "aid_11314867"
+    } ]
+  }
+}
+[2026-04-21T09:38:34.704] [INFO] devops-prov.factory - Switching account key to: 'undefined'
+[2026-04-21T09:38:34.705] [INFO] devops-prov.factory - Using credentials file: '/root/.edgerc', section: 'papi'
+[2026-04-21T09:38:34.705] [INFO] devops-prov.factory - need to create papi
+[2026-04-21T09:38:34.706] [INFO] devops-prov.openclient - Requesting: GET /papi/v1/properties/?contractId=ctr_V-4GARL4E&groupId=230665
+[2026-04-21T09:38:34.708] [INFO] devops-prov.edgegrid.auth - Unsigned authorization header: EG1-HMAC-SHA256 client_token=akab-25vbjix7hlb7mvdq-5i3asijmzu47elt5;access_token=akab-wreeb2qdtwedjpl3-4edtwmulhcgd4ali;timestamp=20260421T09:38:34+0000;nonce=8140d070-c46b-444f-a48b-f18951d457d0;
+
+[2026-04-21T09:38:34.708] [INFO] devops-prov.edgegrid.helpers - Body is ""
+[2026-04-21T09:38:34.708] [DEBUG] devops-prov.edgegrid.helpers - PREPARED BODY LENGTH 0
+[2026-04-21T09:38:34.708] [INFO] devops-prov.edgegrid.helpers - Data to sign: "GET	https	akab-cy5rj3csv3v7dn24-d3vlgpdgxrfscikd.luna.akamaiapis.net	/papi/v1/properties/?contractId=ctr_V-4GARL4E&groupId=230665			EG1-HMAC-SHA256 client_token=akab-25vbjix7hlb7mvdq-5i3asijmzu47elt5;access_token=akab-wreeb2qdtwedjpl3-4edtwmulhcgd4ali;timestamp=20260421T09:38:34+0000;nonce=8140d070-c46b-444f-a48b-f18951d457d0;" 
+
+[2026-04-21T09:38:34.709] [INFO] devops-prov.edgegrid.helpers - Signing key: xygF0/ITfX2M8HKsu/ZpOdE8G1JlqvblaRFv5kbY6nY=
+
+[2026-04-21T09:38:34.709] [INFO] devops-prov.edgegrid.auth - Signed authorization header: EG1-HMAC-SHA256 client_token=akab-25vbjix7hlb7mvdq-5i3asijmzu47elt5;access_token=akab-wreeb2qdtwedjpl3-4edtwmulhcgd4ali;timestamp=20260421T09:38:34+0000;nonce=8140d070-c46b-444f-a48b-f18951d457d0;signature=N/eFc6QNN8Hz0Cek5zr0CFgiAbG1e0G1G98bKwbn7aY=
+
+[2026-04-21T09:38:34.740] [INFO] devops-prov.edgegrid - request {
+  debugId: 1,
+  uri: 'https://akab-cy5rj3csv3v7dn24-d3vlgpdgxrfscikd.luna.akamaiapis.net/papi/v1/properties/?contractId=ctr_V-4GARL4E&groupId=230665',
+  method: 'GET',
+  headers: {
+    'X-User-Agent': 'Akamai-PD; Version=0.7.8-RELEASE;pm-cli;',
+    'User-Agent': 'Akamai-PD; Version=0.7.8-RELEASE;pm-cli;',
+    Authorization: 'EG1-HMAC-SHA256 client_token=akab-25vbjix7hlb7mvdq-5i3asijmzu47elt5;access_token=akab-wreeb2qdtwedjpl3-4edtwmulhcgd4ali;timestamp=20260421T09:38:34+0000;nonce=8140d070-c46b-444f-a48b-f18951d457d0;signature=N/eFc6QNN8Hz0Cek5zr0CFgiAbG1e0G1G98bKwbn7aY=',
+    host: 'akab-cy5rj3csv3v7dn24-d3vlgpdgxrfscikd.luna.akamaiapis.net'
+  }
+}
+[2026-04-21T09:38:35.251] [INFO] devops-prov.edgegrid - response {
+  debugId: 1,
+  headers: {
+    'content-type': 'application/json',
+    'x-trace-id': '47b81aea0aebdf17',
+    'x-ids-session-id': '3adc4a74-6b26-4f24-9d04-98afae7604e1, 3adc4a74-6b26-4f24-9d04-98afae7604e1',
+    'x-ratelimit-limit': '1000',
+    'x-ratelimit-remaining': '998',
+    'x-limit-properties-per-contract-limit': '1000',
+    'x-limit-properties-per-contract-remaining': '986',
+    'cache-control': 'no-store',
+    vary: 'accept-encoding',
+    'papi-cache-status': 'CACHE_MISS',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains',
+    'content-length': '5168',
+    date: 'Tue, 21 Apr 2026 09:38:35 GMT',
+    connection: 'keep-alive'
+  },
+  statusCode: 200,
+  body: '{\n' +
+    '  "properties" : {\n' +
+    '    "items" : [ {\n' +
+    '      "accountId" : "act_F-AC-4891758",\n' +
+    '      "contractId" : "ctr_V-4GARL4E",\n' +
+    '      "groupId" : "grp_230665",\n' +
+    '      "propertyId" : "prp_910841",\n' +
+    '      "propertyName" : "beautyforever.com_essl",\n' +
+    '      "latestVersion" : 63,\n' +
+    '      "stagingVersion" : 63,\n' +
+    '      "productionVersion" : 62,\n' +
+    '      "assetId" : "aid_11153387"\n' +
+    '    }, {\n' +
+    '      "accountId" : "act_F-AC-4891758",\n' +
+    '      "contractId" : "ctr_V-4GARL4E",\n' +
+    '      "groupId" : "grp_230665",\n' +
+    '      "propertyId" : "prp_1093535",\n' +
+    '      "propertyName" : "sapi.juliahair.com",\n' +
+    '      "latestVersion" : 6,\n' +
+    '      "stagingVersion" : 6,\n' +
+    '      "productionVersion" : 6,\n' +
+    '      "assetId" : "aid_11379976"\n' +
+    '    }, {\n' +
+    '      "accountId" : "act_F-AC-4891758",\n' +
+    '      "contractId" : "ctr_V-4GARL4E",\n' +
+    '      "groupId" : "grp_230665",\n' +
+    '      "propertyId" : "prp_1093537",\n' +
+    '      "propertyName" : "sapi.nadula.com",\n' +
+    '      "latestVersion" : 4,\n' +
+    '      "stagingVersion" : 4,\n' +
+    '      "productionVersion" : 4,\n' +
+    '      "assetId" : "aid_11379978"\n' +
+    '    }, {\n' +
+    '      "accountId" : "act_F-AC-4891758",\n' +
+    '      "contractId" : "ctr_V-4GARL4E",\n' +
+    '      "groupId" : "grp_230665",\n' +
+    '      "propertyId" : "prp_1255583",\n' +
+    '      "propertyName" : "tm.unice.com",\n' +
+    '      "latestVersion" : 8,\n' +
+    '      "stagingVersion" : 8,\n' +
+    '      "productionVersion" : 7,\n' +
+    '      "assetId" : "aid_11540570"\n' +
+    '    }, {\n' +
+    '      "accountId" : "act_F-AC-4891758",\n' +
+    '      "contractId" : "ctr_V-4GARL4E",\n' +
+    '      "groupId" : "grp_230665",\n' +
+    '      "propertyId" : "prp_1093531",\n' +
+    '      "propertyName" : "sapi.unice.com",\n' +
+    '      "latestVersion" : 5,\n' +
+    '      "stagingVersion" : 5,\n' +
+    '      "productionVersion" : 5,\n' +
+    '      "assetId" : "aid_11379969"\n' +
+    '    }, {\n' +
+    '      "accountId" : "act_F-AC-4891758",\n' +
+    '      "contractId" : "ctr_V-4GARL4E",\n' +
+    '      "groupId" : "grp_230665",\n' +
+    '      "propertyId" : "prp_883650",\n' +
+    '      "propertyName" : "beautyforever.com",\n' +
+    '      "latestVersion" : 36,\n' +
+    '      "stagingVersion" : null,\n' +
+    '      "productionVersion" : null,\n' +
+    '      "assetId" : "aid_11119717"\n' +
+    '    }, {\n' +
+    '      "accountId" : "act_F-AC-4891758",\n' +
+    '      "contractId" : "ctr_V-4GARL4E",\n' +
+    '      "groupId" : "grp_230665",\n' +
+    '      "propertyId" : "prp_1010833",\n' +
+    '      "propertyName" : "unice.com",\n' +
+    '      "latestVersion" : 175,\n' +
+    '      "stagingVersion" : 175,\n' +
+    '      "productionVersion" : 175,\n' +
+    '      "assetId" : "aid_11276609"\n' +
+    '    }, {\n' +
+    '      "accountId" : "act_F-AC-4891758",\n' +
+    '      "contractId" : "ctr_V-4GARL4E",\n' +
+    '      "groupId" : "grp_230665",\n' +
+    '      "propertyId" : "prp_899790",\n' +
+    '      "propertyName" : "beautyforever.com_akamai_test",\n' +
+    '      "latestVersion" : 9,\n' +
+    '      "stagingVersion" : null,\n' +
+    '      "productionVersion" : null,\n' +
+    '      "assetId" : "aid_11138663"\n' +
+    '    }, {\n' +
+    '      "accountId" : "act_F-AC-4891758",\n' +
+    '      "contractId" : "ctr_V-4GARL4E",\n' +
+    '      "groupId" : "grp_230665",\n' +
+    '      "propertyId" : "prp_931346",\n' +
+    '      "propertyName" : "dev-velvethairextension.com",\n' +
+    '      "latestVersion" : 7,\n' +
+    '      "stagingVersion" : 7,\n' +
+    '      "productionVersion" : 7,\n' +
+    '      "assetId" : "aid_11178085"\n' +
+    '    }, {\n' +
+    '      "accountId" : "act_F-AC-4891758",\n' +
+    '      "contractId" : "ctr_V-4GARL4E",\n' +
+    '      "groupId" : "grp_230665",\n' +
+    '      "propertyId" : "prp_1198989",\n' +
+    '      "propertyName" : "fr.unice.com",\n' +
+    '      "latestVersion" : 12,\n' +
+    '      "stagingVersion" : 12,\n' +
+    '      "productionVersion" : 10,\n' +
+    '      "assetId" : "aid_11473504"\n' +
+    '    }, {\n' +
+    '      "accountId" : "act_F-AC-4891758",\n' +
+    '      "contractId" : "ctr_V-4GARL4E",\n' +
+    '      "groupId" : "grp_230665",\n' +
+    '      "propertyId" : "prp_1093527",\n' +
+    '      "propertyName" : "sapi.beautyforever.com",\n' +
+    '      "latestVersion" : 6,\n' +
+    '      "stagingVersion" : 6,\n' +
+    '      "productionVersion" : 6,\n' +
+    '      "assetId" : "aid_11379964"\n' +
+    '    }, {\n' +
+    '      "accountId" : "act_F-AC-4891758",\n' +
+    '      "contractId" : "ctr_V-4GARL4E",\n' +
+    '      "groupId" : "grp_230665",\n' +
+    '      "propertyId" : "prp_1026538",\n' +
+    '      "propertyName" : "juliahair.com",\n' +
+    '      "latestVersion" : 6,\n' +
+    '      "stagingVersion" : 6,\n' +
+    '      "productionVersion" : 6,\n' +
+    '      "assetId" : "aid_11296570"\n' +
+    '    }, {\n' +
+    '      "accountId" : "act_F-AC-4891758",\n' +
+    '      "contractId" : "ctr_V-4GARL4E",\n' +
+    '      "groupId" : "grp_230665",\n' +
+    '      "propertyId" : "prp_949019",\n' +
+    '      "propertyName" : "nadula.com",\n' +
+    '      "latestVersion" : 47,\n' +
+    '      "stagingVersion" : 47,\n' +
+    '      "productionVersion" : 46,\n' +
+    '      "assetId" : "aid_11199132"\n' +
+    '    }, {\n' +
+    '      "accountId" : "act_F-AC-4891758",\n' +
+    '      "contractId" : "ctr_V-4GARL4E",\n' +
+    '      "groupId" : "grp_230665",\n' +
+    '      "propertyId" : "prp_923813",\n' +
+    '      "propertyName" : "dev-beautyforever.com",\n' +
+    '      "latestVersion" : 51,\n' +
+    '      "stagingVersion" : 51,\n' +
+    '      "productionVersion" : 51,\n' +
+    '      "assetId" : "aid_11169041"\n' +
+    '    }, {\n' +
+    '      "accountId" : "act_F-AC-4891758",\n' +
+    '      "contractId" : "ctr_V-4GARL4E",\n' +
+    '      "groupId" : "grp_230665",\n' +
+    '      "propertyId" : "prp_956325",\n' +
+    '      "propertyName" : "api.beautyforever.com",\n' +
+    '      "latestVersion" : 11,\n' +
+    '      "stagingVersion" : 11,\n' +
+    '      "productionVersion" : 10,\n' +
+    '      "assetId" : "aid_11208151"\n' +
+    '    }, {\n' +
+    '      "accountId" : "act_F-AC-4891758",\n' +
+    '      "contractId" : "ctr_V-4GARL4E",\n' +
+    '      "groupId" : "grp_230665",\n' +
+    '      "propertyId" : "prp_1041097",\n' +
+    '      "propertyName" : "juliahair.com_new",\n' +
+    '      "latestVersion" : 40,\n' +
+    '      "stagingVersion" : 35,\n' +
+    '      "productionVersion" : 38,\n' +
+    '      "assetId" : "aid_11314867"\n' +
+    '    } ]\n' +
+    '  }\n' +
+    '}'
+}
+[2026-04-21T09:38:35.252] [INFO] devops-prov.openclient - Status code:  200
+[2026-04-21T09:38:35.252] [INFO] devops-prov.openclient - Body:  {
+  "properties" : {
+    "items" : [ {
+      "accountId" : "act_F-AC-4891758",
+      "contractId" : "ctr_V-4GARL4E",
+      "groupId" : "grp_230665",
+      "propertyId" : "prp_910841",
+      "propertyName" : "beautyforever.com_essl",
+      "latestVersion" : 63,
+      "stagingVersion" : 63,
+      "productionVersion" : 62,
+      "assetId" : "aid_11153387"
+    }, {
+      "accountId" : "act_F-AC-4891758",
+      "contractId" : "ctr_V-4GARL4E",
+      "groupId" : "grp_230665",
+      "propertyId" : "prp_1093535",
+      "propertyName" : "sapi.juliahair.com",
+      "latestVersion" : 6,
+      "stagingVersion" : 6,
+      "productionVersion" : 6,
+      "assetId" : "aid_11379976"
+    }, {
+      "accountId" : "act_F-AC-4891758",
+      "contractId" : "ctr_V-4GARL4E",
+      "groupId" : "grp_230665",
+      "propertyId" : "prp_1093537",
+      "propertyName" : "sapi.nadula.com",
+      "latestVersion" : 4,
+      "stagingVersion" : 4,
+      "productionVersion" : 4,
+      "assetId" : "aid_11379978"
+    }, {
+      "accountId" : "act_F-AC-4891758",
+      "contractId" : "ctr_V-4GARL4E",
+      "groupId" : "grp_230665",
+      "propertyId" : "prp_1255583",
+      "propertyName" : "tm.unice.com",
+      "latestVersion" : 8,
+      "stagingVersion" : 8,
+      "productionVersion" : 7,
+      "assetId" : "aid_11540570"
+    }, {
+      "accountId" : "act_F-AC-4891758",
+      "contractId" : "ctr_V-4GARL4E",
+      "groupId" : "grp_230665",
+      "propertyId" : "prp_1093531",
+      "propertyName" : "sapi.unice.com",
+      "latestVersion" : 5,
+      "stagingVersion" : 5,
+      "productionVersion" : 5,
+      "assetId" : "aid_11379969"
+    }, {
+      "accountId" : "act_F-AC-4891758",
+      "contractId" : "ctr_V-4GARL4E",
+      "groupId" : "grp_230665",
+      "propertyId" : "prp_883650",
+      "propertyName" : "beautyforever.com",
+      "latestVersion" : 36,
+      "stagingVersion" : null,
+      "productionVersion" : null,
+      "assetId" : "aid_11119717"
+    }, {
+      "accountId" : "act_F-AC-4891758",
+      "contractId" : "ctr_V-4GARL4E",
+      "groupId" : "grp_230665",
+      "propertyId" : "prp_1010833",
+      "propertyName" : "unice.com",
+      "latestVersion" : 175,
+      "stagingVersion" : 175,
+      "productionVersion" : 175,
+      "assetId" : "aid_11276609"
+    }, {
+      "accountId" : "act_F-AC-4891758",
+      "contractId" : "ctr_V-4GARL4E",
+      "groupId" : "grp_230665",
+      "propertyId" : "prp_899790",
+      "propertyName" : "beautyforever.com_akamai_test",
+      "latestVersion" : 9,
+      "stagingVersion" : null,
+      "productionVersion" : null,
+      "assetId" : "aid_11138663"
+    }, {
+      "accountId" : "act_F-AC-4891758",
+      "contractId" : "ctr_V-4GARL4E",
+      "groupId" : "grp_230665",
+      "propertyId" : "prp_931346",
+      "propertyName" : "dev-velvethairextension.com",
+      "latestVersion" : 7,
+      "stagingVersion" : 7,
+      "productionVersion" : 7,
+      "assetId" : "aid_11178085"
+    }, {
+      "accountId" : "act_F-AC-4891758",
+      "contractId" : "ctr_V-4GARL4E",
+      "groupId" : "grp_230665",
+      "propertyId" : "prp_1198989",
+      "propertyName" : "fr.unice.com",
+      "latestVersion" : 12,
+      "stagingVersion" : 12,
+      "productionVersion" : 10,
+      "assetId" : "aid_11473504"
+    }, {
+      "accountId" : "act_F-AC-4891758",
+      "contractId" : "ctr_V-4GARL4E",
+      "groupId" : "grp_230665",
+      "propertyId" : "prp_1093527",
+      "propertyName" : "sapi.beautyforever.com",
+      "latestVersion" : 6,
+      "stagingVersion" : 6,
+      "productionVersion" : 6,
+      "assetId" : "aid_11379964"
+    }, {
+      "accountId" : "act_F-AC-4891758",
+      "contractId" : "ctr_V-4GARL4E",
+      "groupId" : "grp_230665",
+      "propertyId" : "prp_1026538",
+      "propertyName" : "juliahair.com",
+      "latestVersion" : 6,
+      "stagingVersion" : 6,
+      "productionVersion" : 6,
+      "assetId" : "aid_11296570"
+    }, {
+      "accountId" : "act_F-AC-4891758",
+      "contractId" : "ctr_V-4GARL4E",
+      "groupId" : "grp_230665",
+      "propertyId" : "prp_949019",
+      "propertyName" : "nadula.com",
+      "latestVersion" : 47,
+      "stagingVersion" : 47,
+      "productionVersion" : 46,
+      "assetId" : "aid_11199132"
+    }, {
+      "accountId" : "act_F-AC-4891758",
+      "contractId" : "ctr_V-4GARL4E",
+      "groupId" : "grp_230665",
+      "propertyId" : "prp_923813",
+      "propertyName" : "dev-beautyforever.com",
+      "latestVersion" : 51,
+      "stagingVersion" : 51,
+      "productionVersion" : 51,
+      "assetId" : "aid_11169041"
+    }, {
+      "accountId" : "act_F-AC-4891758",
+      "contractId" : "ctr_V-4GARL4E",
+      "groupId" : "grp_230665",
+      "propertyId" : "prp_956325",
+      "propertyName" : "api.beautyforever.com",
+      "latestVersion" : 11,
+      "stagingVersion" : 11,
+      "productionVersion" : 10,
+      "assetId" : "aid_11208151"
+    }, {
+      "accountId" : "act_F-AC-4891758",
+      "contractId" : "ctr_V-4GARL4E",
+      "groupId" : "grp_230665",
+      "propertyId" : "prp_1041097",
+      "propertyName" : "juliahair.com_new",
+      "latestVersion" : 40,
+      "stagingVersion" : 35,
+      "productionVersion" : 38,
+      "assetId" : "aid_11314867"
+    } ]
+  }
+}

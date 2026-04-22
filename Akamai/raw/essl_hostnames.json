@@ -1,0 +1,27 @@
+{
+  "accountId": "act_F-AC-4891758",
+  "contractId": "ctr_V-4GARL4E",
+  "groupId": "grp_230665",
+  "propertyId": "prp_910841",
+  "propertyName": "beautyforever.com_essl",
+  "propertyVersion": 62,
+  "etag": "bd975e666a0abbd3495baf612b5b79d1185cd2a9",
+  "hostnames": {
+    "items": [
+      {
+        "cnameType": "EDGE_HOSTNAME",
+        "edgeHostnameId": "ehn_5327863",
+        "cnameFrom": "m.beautyforever.com",
+        "cnameTo": "beautyforever.com.edgekey.net",
+        "certProvisioningType": "CPS_MANAGED"
+      },
+      {
+        "cnameType": "EDGE_HOSTNAME",
+        "edgeHostnameId": "ehn_5327863",
+        "cnameFrom": "www.beautyforever.com",
+        "cnameTo": "beautyforever.com.edgekey.net",
+        "certProvisioningType": "CPS_MANAGED"
+      }
+    ]
+  }
+}

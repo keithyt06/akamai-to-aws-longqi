@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>模块 00 · Account Overview — Akamai · beautyforever.com</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./assets/style.css" />
+</head>
+<body>
+<nav class="topnav">
+  <div class="brand"><span class="dot">●</span> Akamai · beautyforever.com</div>
+  <div class="nav-links">
+    <a href="./index.html">Home</a>
+    <a href="./00-account.html" class="active">00 Account</a>
+    <a href="./10-property-essl.html">10 Property ESSL</a>
+    <a href="./11-property-api.html">11 Property API</a>
+    <a href="./20-waf.html">20 WAF</a>
+    <a href="./30-domain-www.html">30 Domain www</a>
+    <a href="./31-domain-m.html">31 Domain m</a>
+    <a href="./32-domain-api.html">32 Domain api</a>
+    <a href="./40-ops-verification.html">40 Ops Verify</a>
+    <a href="./90-dynamic-static.html">90 Dyn/Static</a>
+    <a href="./99-queries.html">99 Queries</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="hero-inner">
+    <span class="hero-badge">Module 00 · Account Overview</span>
+    <h1>Account <span class="accent">Overview</span></h1>
+    <p class="subtitle">账号 / Contract / Group / API Client 权限 — 调研基础信息与 API 能力矩阵</p>
+    <div class="meta">
+      <span><strong>账号</strong> <code>act_F-AC-4891758</code></span>
+      <span><strong>Contract</strong> <code>ctr_V-4GARL4E</code></span>
+      <span><strong>Group</strong> <code>grp_230665</code></span>
+      <span><strong>采集日期</strong> 2026-04-21</span>
+    </div>
+  </div>
+</header>
+
+<main class="container">
+
+  <div style="background: var(--warn-dim); border: 1px solid var(--warn); border-radius: 8px; padding: 16px 20px; margin-bottom: 28px;">
+    <div style="color: var(--warn); font-weight: 700; font-size: var(--heading-size); margin-bottom: 8px;">⚠ 2026-04-21 Live Audit · 版本号实时核对</div>
+    <div style="color: var(--text-primary); font-size: var(--body-size); line-height: 1.6;">
+      用 <code>akamai pm list-properties -c ctr_V-4GARL4E -g grp_230665</code> 核对：
+      <code>beautyforever.com_essl</code> prod=<strong>62</strong> · latest/staging=<strong>63</strong>（⚠ HSTS staging 未上生产）；
+      <code>api.beautyforever.com</code> prod=<strong>10</strong> · latest/staging=<strong>11</strong>（⚠ HSTS staging 未上生产）。<br>
+      同账号其他 <code>*beautyforever*</code> property（<code>beautyforever.com</code>、<code>*_akamai_test</code>、<code>dev-*</code>、<code>sapi.*</code>）对生产流量迁移无直接影响，但若整体搬迁账号需一并入范围。
+    </div>
+  </div>
+
+  <div class="toc">
+    <h3>Table of Contents</h3>
+    <ul>
+      <li><a href="#account">§1 账号</a></li>
+      <li><a href="#properties">§2 同组内的 Property 一览</a></li>
+      <li><a href="#api-client">§3 API Client 权限</a></li>
+      <li><a href="#tools">§4 采集工具</a></li>
+    </ul>
+  </div>
+
+  <div class="callout">
+    <strong>范围</strong>：本文件覆盖 <code>00-account-overview.md</code>，说明账号层基础信息（Account / Contract / Group）、
+    同组内 Property 一览、<code>/root/.edgerc</code> API Client 的已授予能力清单，以及本次调研所用的命令行工具。
+    任何涉及按 hostname 反查 property 的命令都会因 <code>find-by-value</code> grant 缺失而 403。
+  </div>
+
+  <!-- ============ §1 账号 ============ -->
+  <section id="account">
+    <h2><span class="chapter-num">§1</span> 账号</h2>
+    <p class="section-intro">账号 / Contract / Group 的规范 ID 与命名，所有后续调用 PAPI / AppSec API 时均需带这些 ID 才能定位资源。</p>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">ACC-01</span>账号基础身份</div>
+        <span class="badge info">Identity</span>
+      </div>
+      <div class="rule-body">
+        <p>账号层资源 ID 一览（来自 <code>GET /papi/v1/contracts</code> 与 <code>GET /papi/v1/groups</code>）。</p>
+        <table class="tbl">
+          <thead>
+            <tr><th>字段</th><th>值</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Account Name</td><td>Xuchang Longqi E-Commerce Co., Ltd. （许昌龙麒电子商务）</td></tr>
+            <tr><td>Account ID</td><td><code>act_F-AC-4891758</code></td></tr>
+            <tr><td>Contract ID</td><td><code>ctr_V-4GARL4E</code></td></tr>
+            <tr><td>Contract Type</td><td>INDIRECT_CUSTOMER</td></tr>
+            <tr><td>Group Name</td><td>Xuchang Longqi E-Commerce Co., Ltd.-V-4GARL4E</td></tr>
+            <tr><td>Group ID</td><td><code>grp_230665</code></td></tr>
+            <tr><td>Parent Group</td><td>（无，顶级）</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">ACC-02</span>资源 ID 速查（核心）</div>
+        <span class="badge info">Quick-ref</span>
+      </div>
+      <div class="rule-body">
+        <p>后续模块高频引用的 3 个 ID。复制粘贴使用时不要带反引号。</p>
+        <table class="tbl">
+          <thead>
+            <tr><th>资源</th><th>ID</th><th>用途</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Account</td><td><code>act_F-AC-4891758</code></td><td>所有 PAPI / AppSec 调用的 <code>accountSwitchKey</code> 基础</td></tr>
+            <tr><td>Contract</td><td><code>ctr_V-4GARL4E</code></td><td>PAPI <code>?contractId=</code> 必填参数</td></tr>
+            <tr><td>Group</td><td><code>grp_230665</code></td><td>PAPI <code>?groupId=</code> 必填参数</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ §2 Properties ============ -->
+  <section id="properties">
+    <h2><span class="chapter-num">§2</span> 同组内的 Property 一览</h2>
+    <p class="section-intro">组 <code>grp_230665</code> 下所有 Property 与其激活版本。<strong>粗体</strong> 标注为本次调研重点（生产在跑的 essl / api 两条）。</p>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">ACC-03</span>Property 列表（16 条）</div>
+        <span class="badge info">Inventory</span>
+      </div>
+      <div class="rule-body">
+        <p>Production Ver 为线上生效版本；Latest Ver 为最新编辑版本；Staging Ver 为 Staging 网络上激活的版本。<code>—</code> 表示该环境无激活版本。</p>
+        <table class="tbl">
+          <thead>
+            <tr><th>Property Name</th><th>Property ID</th><th>Production Ver</th><th>Latest Ver</th><th>Staging Ver</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><strong>beautyforever.com_essl</strong></td><td><code>prp_910841</code></td><td><strong>62</strong></td><td>63</td><td>63</td></tr>
+            <tr><td>beautyforever.com</td><td><code>prp_883650</code></td><td>—</td><td>36</td><td>—</td></tr>
+            <tr><td>beautyforever.com_akamai_test</td><td><code>prp_899790</code></td><td>—</td><td>9</td><td>—</td></tr>
+            <tr><td>dev-beautyforever.com</td><td><code>prp_923813</code></td><td>51</td><td>51</td><td>51</td></tr>
+            <tr><td><strong>api.beautyforever.com</strong></td><td><code>prp_956325</code></td><td><strong>10</strong></td><td>11</td><td>11</td></tr>
+            <tr><td>sapi.beautyforever.com</td><td><code>prp_1093527</code></td><td>6</td><td>6</td><td>6</td></tr>
+            <tr><td>unice.com</td><td><code>prp_1010833</code></td><td>175</td><td>175</td><td>175</td></tr>
+            <tr><td>fr.unice.com</td><td><code>prp_1198989</code></td><td>10</td><td>12</td><td>12</td></tr>
+            <tr><td>sapi.unice.com</td><td><code>prp_1093531</code></td><td>5</td><td>5</td><td>5</td></tr>
+            <tr><td>tm.unice.com</td><td><code>prp_1255583</code></td><td>7</td><td>8</td><td>8</td></tr>
+            <tr><td>juliahair.com</td><td><code>prp_1026538</code></td><td>6</td><td>6</td><td>6</td></tr>
+            <tr><td>juliahair.com_new</td><td><code>prp_1041097</code></td><td>38</td><td>40</td><td>35</td></tr>
+            <tr><td>sapi.juliahair.com</td><td><code>prp_1093535</code></td><td>6</td><td>6</td><td>6</td></tr>
+            <tr><td>nadula.com</td><td><code>prp_949019</code></td><td>46</td><td>47</td><td>47</td></tr>
+            <tr><td>sapi.nadula.com</td><td><code>prp_1093537</code></td><td>4</td><td>4</td><td>4</td></tr>
+            <tr><td>dev-velvethairextension.com</td><td><code>prp_931346</code></td><td>7</td><td>7</td><td>7</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">ACC-04</span>调研焦点 Property</div>
+        <span class="badge pass">In-scope</span>
+      </div>
+      <div class="rule-body">
+        <p>本次 Akamai → AWS 迁移调研聚焦 <code>beautyforever.com</code> 的两个线上 Property：</p>
+        <table class="tbl">
+          <thead>
+            <tr><th>Property</th><th>ID</th><th>Prod Ver</th><th>模块</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>beautyforever.com_essl</td><td><code>prp_910841</code></td><td>62</td><td><a href="./10-property-essl.html">10 Property ESSL</a></td></tr>
+            <tr><td>api.beautyforever.com</td><td><code>prp_956325</code></td><td>10</td><td><a href="./11-property-api.html">11 Property API</a></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ §3 API Client 权限 ============ -->
+  <section id="api-client">
+    <h2><span class="chapter-num">§3</span> API Client 权限</h2>
+    <p class="section-intro">凭据文件：<code>/root/.edgerc</code>，包含 <code>[default] [papi] [appsec]</code> 三节（同一套 key）。本节逐条列出可用 / 不可用的 API 路径。</p>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">ACC-05</span>edgerc 文件位置与结构</div>
+        <span class="badge info">Credentials</span>
+      </div>
+      <div class="rule-body">
+        <p>EdgeGrid 认证凭据文件路径固定为 <code>/root/.edgerc</code>，三节同 key 以便 akamai CLI、property-manager 插件、appsec 插件、Python SDK 共用。</p>
+<pre class="code" data-label="ini">; /root/.edgerc  (三节同一套 key)
+
+[default]
+client_secret = ***
+host          = ***.luna.akamaiapis.net
+access_token  = ***
+client_token  = ***
+
+[papi]
+client_secret = ***
+host          = ***.luna.akamaiapis.net
+access_token  = ***
+client_token  = ***
+
+[appsec]
+client_secret = ***
+host          = ***.luna.akamaiapis.net
+access_token  = ***
+client_token  = ***</pre>
+      </div>
+    </div>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">ACC-06</span>PAPI 授权矩阵</div>
+        <span class="badge pass">Available</span>
+      </div>
+      <div class="rule-body">
+        <p>Property Manager API 可用能力。<code>find-by-value</code> 是唯一缺 grant 的端点，会直接返回 403。</p>
+        <table class="tbl">
+          <thead>
+            <tr><th>API Path</th><th style="text-align:center;">可用？</th><th>说明</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>GET /papi/v1/contracts</code></td><td style="text-align:center;">✅</td><td></td></tr>
+            <tr><td><code>GET /papi/v1/groups</code></td><td style="text-align:center;">✅</td><td></td></tr>
+            <tr><td><code>GET /papi/v1/properties</code></td><td style="text-align:center;">✅</td><td>需带 contractId + groupId</td></tr>
+            <tr><td><code>GET /papi/v1/properties/{pid}/versions/{v}/rules</code></td><td style="text-align:center;">✅</td><td><strong>完整 rule tree</strong></td></tr>
+            <tr><td><code>GET /papi/v1/properties/{pid}/versions/{v}/hostnames</code></td><td style="text-align:center;">✅</td><td></td></tr>
+            <tr><td><code>POST /papi/v1/search/find-by-value</code></td><td style="text-align:center;">❌ 403</td><td>没有 grant，<code>pm search</code> / <code>pm lph</code> 会失败</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">ACC-07</span>AppSec 授权矩阵</div>
+        <span class="badge pass">Available</span>
+      </div>
+      <div class="rule-body">
+        <p>Application Security API 全量可用，可拉完整 WAF 配置、match-targets、security-policies、hostname-coverage。</p>
+        <table class="tbl">
+          <thead>
+            <tr><th>API Path</th><th style="text-align:center;">可用？</th><th>说明</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>GET /appsec/v1/configs</code></td><td style="text-align:center;">✅</td><td></td></tr>
+            <tr><td><code>GET /appsec/v1/configs/{id}/versions/{v}</code></td><td style="text-align:center;">✅</td><td></td></tr>
+            <tr><td><code>GET /appsec/v1/configs/{id}/versions/{v}/match-targets</code></td><td style="text-align:center;">✅</td><td></td></tr>
+            <tr><td><code>GET /appsec/v1/configs/{id}/versions/{v}/security-policies</code></td><td style="text-align:center;">✅</td><td></td></tr>
+            <tr><td><code>GET /appsec/v1/hostname-coverage</code></td><td style="text-align:center;">✅</td><td></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">ACC-08</span>权限缺失的影响与绕行路径</div>
+        <span class="badge pending">Workaround</span>
+      </div>
+      <div class="rule-body">
+        <div class="callout warn">
+          <strong>影响：</strong>任何依赖 <code>find-by-value</code> 的「按 hostname 反查 property」命令都不可用，需要先 <code>list-properties</code> 拿到 Property ID，再用显式 ID 查 hostnames / rules。本次调研的所有输出都用这个路径拿到，数据是完整的。
+        </div>
+        <p>规范的 hostname → property 反查绕行两步：</p>
+<pre class="code" data-label="shell"># 1) 列出所有 property（需带 contractId + groupId）
+akamai pm list-properties \
+  --contractId ctr_V-4GARL4E \
+  --groupId    grp_230665
+
+# 2) 对候选 Property ID 逐个查 hostnames，自己匹配目标域
+curl -s --header 'Authorization: EG1-HMAC-SHA256 ...' \
+  "https://<host>/papi/v1/properties/prp_910841/versions/62/hostnames?contractId=ctr_V-4GARL4E&groupId=grp_230665"</pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ §4 采集工具 ============ -->
+  <section id="tools">
+    <h2><span class="chapter-num">§4</span> 采集工具</h2>
+    <p class="section-intro">本次调研的所有数据都由以下工具链采集，全部基于 EdgeGrid 认证。</p>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">ACC-09</span>Akamai CLI + 插件</div>
+        <span class="badge info">Tooling</span>
+      </div>
+      <div class="rule-body">
+        <ul>
+          <li><strong>akamai CLI v2.0.3</strong>（<code>/usr/local/bin/akamai</code>，下载自 <a href="https://github.com/akamai/cli/releases" target="_blank" rel="noopener">akamai/cli</a>）</li>
+          <li>安装包：
+            <ul>
+              <li><code>akamai property-manager</code>（PAPI DevOps CLI）</li>
+              <li><code>akamai appsec</code>（Application Security CLI）</li>
+            </ul>
+          </li>
+          <li>Python：<code>akamai.edgegrid</code>（官方 SDK）用于直接打 PAPI REST。</li>
+        </ul>
+<pre class="code" data-label="shell"># CLI 版本 & 插件
+akamai --version
+akamai property-manager --version
+akamai appsec --version
+
+# Python SDK（官方 EdgeGrid 认证）
+pip show edgegrid-python</pre>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <div>
+    Akamai 配置调研 · beautyforever.com · 2026-04-21<br>
+    源文档：<code>../doc/*.md</code> · 原始 JSON：<code>../raw/*.json</code> · Keith · AWS Solutions Architect
+  </div>
+</footer>
+
+<script src="./assets/app.js" defer></script>
+
+</body>
+</html>

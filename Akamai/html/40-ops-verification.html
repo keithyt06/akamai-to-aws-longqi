@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>模块 40 · Ops Verification — Akamai · beautyforever.com</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./assets/style.css" />
+</head>
+<body>
+<nav class="topnav">
+  <div class="brand"><span class="dot">●</span> Akamai · beautyforever.com</div>
+  <div class="nav-links">
+    <a href="./index.html">Home</a>
+    <a href="./00-account.html">00 Account</a>
+    <a href="./10-property-essl.html">10 Property ESSL</a>
+    <a href="./11-property-api.html">11 Property API</a>
+    <a href="./20-waf.html">20 WAF</a>
+    <a href="./30-domain-www.html">30 Domain www</a>
+    <a href="./31-domain-m.html">31 Domain m</a>
+    <a href="./32-domain-api.html">32 Domain api</a>
+    <a href="./40-ops-verification.html" class="active">40 Ops Verify</a>
+    <a href="./90-dynamic-static.html">90 Dyn/Static</a>
+    <a href="./99-queries.html">99 Queries</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="hero-inner">
+    <span class="hero-badge">Module 40 · Ops Verification · 2026-04-21</span>
+    <h1><span class="accent">Ops</span> Verification</h1>
+    <p class="subtitle">把运维的口头/截图反馈逐条对到 raw JSON 活体配置，并记录初版文档的差错，供 Team Agent 审计复盘。</p>
+    <div class="meta">
+      <span><strong>运维反馈</strong> 4 条</span>
+      <span><strong>核对表</strong> 11 行</span>
+      <span><strong>初版错误</strong> 7 处</span>
+      <span><strong>验证脚本</strong> <code>/tmp/verify.py</code></span>
+    </div>
+  </div>
+</header>
+
+<main class="container">
+
+  <div class="stat-grid">
+    <div class="stat info">
+      <span class="stat-label">Ops Feedback</span>
+      <div class="stat-num">4</div>
+      <span class="stat-hint">运维口头 / 截图反馈条数</span>
+    </div>
+    <div class="stat pass">
+      <span class="stat-label">Cross-check Rows</span>
+      <div class="stat-num">11</div>
+      <span class="stat-hint">核对表行数 ✅⚠❌</span>
+    </div>
+    <div class="stat warn">
+      <span class="stat-label">V1 Errors</span>
+      <div class="stat-num">7</div>
+      <span class="stat-hint">初版文档差错（已修正）</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Verified Lines</span>
+      <div class="stat-num">11</div>
+      <span class="stat-hint">全量状态（✅ / ⚠ / ❌）</span>
+    </div>
+  </div>
+
+  <div class="toc">
+    <h3>Table of Contents</h3>
+    <ul>
+      <li><a href="#feedback">§1 运维原话复述（反馈源）</a></li>
+      <li><a href="#crosscheck">§2 逐条核对（11 行）</a></li>
+      <li><a href="#errors">§3 初版文档 7 个错误复盘</a></li>
+      <li><a href="#verify">§4 验证脚本保留</a></li>
+      <li><a href="#snapshot">§5 修正后文档状态快照</a></li>
+      <li><a href="#live-audit">§6 2026-04-21 Live CLI Audit（补充核对）</a></li>
+      <li><a href="#todo">§7 Team Agent 可继续挖的方向</a></li>
+    </ul>
+  </div>
+
+  <div class="callout">
+    <strong>范围</strong>：本文件覆盖 <code>40-ops-verification.md</code>。依据 <strong>运维截图反馈</strong> × <code>raw/essl_rules.json</code> 活体原始配置；验证脚本 <code>/tmp/verify.py</code> 已留存，可重跑。
+    目的：把运维的 4 条反馈逐条对到 raw JSON，并记录初版文档差错，供 Team Agent 审计使用。
+  </div>
+
+  <!-- ============ §1 运维原话复述 ============ -->
+  <section id="feedback">
+    <h2><span class="chapter-num">§1</span> 运维原话复述（反馈源）</h2>
+    <p class="section-intro">来自运维的 4 条原始反馈，作为本次交叉比对的事实基线。</p>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">FB-01</span>静态资源缓存 365 天</div>
+        <span class="badge info">TTL</span>
+      </div>
+      <div class="rule-body">
+        <p><code>.js</code> <code>.css</code> 缓存 365 天；字体（常用后缀 <code>woff</code>/<code>woff2</code>/<code>ttf</code>/<code>otf</code>/<code>eot</code>）缓存 365 天；<code>.jpg</code> <code>.webp</code> 等图片缓存 365 天。</p>
+      </div>
+    </div>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">FB-02</span>PC / M 通过域名 + 优先级规则分流</div>
+        <span class="badge info">routing</span>
+      </div>
+      <div class="rule-body">
+        <p>PC 站和 M 站 <strong>ALB 通过域名区分 + 有优先级规则</strong>。</p>
+      </div>
+    </div>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">FB-03</span>设备识别跳转（UA + 白名单）</div>
+        <span class="badge info">redirect</span>
+      </div>
+      <div class="rule-body">
+        <p>设备间识别跳转走 <strong>UA 头</strong>；满足 <code>LqPassWaf/851.3</code> 不跳转；Mobile 访问 <code>/.well-known/apple-developer-merchantid-domain-association.txt</code>（Apple Pay 域名验证）不跳转。</p>
+      </div>
+    </div>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">FB-04</span>首页 6h / 默认 NO_STORE / /blog 智能匹配</div>
+        <span class="badge info">cache</span>
+      </div>
+      <div class="rule-body">
+        <p><code>www.beautyforever.com</code> <strong>首页 6h</strong>，<strong>默认 TTL = 0</strong>（运维口径 = NO_STORE）；<strong><code>/blog</code> 或 <code>/blog*</code></strong> 智能精确匹配子路径。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ §2 逐条核对 ============ -->
+  <section id="crosscheck">
+    <h2><span class="chapter-num">§2</span> 逐条核对</h2>
+    <p class="section-intro">每条运维陈述 → raw JSON 实际 → 我初版文档 → 状态（✅ 一致 / ⚠ 已修正 / ❌ 已修正）。</p>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">XCHK-00</span>11 行核对矩阵</div>
+        <span class="badge info">matrix</span>
+      </div>
+      <div class="rule-body">
+        <table class="tbl">
+          <thead>
+            <tr><th>#</th><th>运维陈述</th><th>raw JSON 实际</th><th>我初版文档</th><th>状态</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>①a</td>
+              <td>js/css 缓存 365d</td>
+              <td><code>Offload origin / CSS and JavaScript: caching MAX_AGE 365d</code> ✅</td>
+              <td>已写 365d</td>
+              <td><span class="badge pass">✅ 一致</span></td>
+            </tr>
+            <tr>
+              <td>①b</td>
+              <td>字体 365d</td>
+              <td><code>Fonts: ext=eot/woff/woff2/otf/ttf, caching MAX_AGE 365d</code> ✅</td>
+              <td>已写 365d</td>
+              <td><span class="badge pass">✅ 一致</span></td>
+            </tr>
+            <tr>
+              <td>①c</td>
+              <td>图片 365d</td>
+              <td><code>Images: ext=jpg/jpeg/png/gif/webp/..., caching MAX_AGE 365d, cacheId=INCLUDE_ALL_QUERY_PARAMS</code> ✅</td>
+              <td>已写 365d</td>
+              <td><span class="badge pass">✅ 一致</span></td>
+            </tr>
+            <tr>
+              <td>②</td>
+              <td>PC/M 通过域名区分 ALB</td>
+              <td><code>Hostnames</code> 父规则下 2 个 children：<code>host=www</code> 分支与 <code>host=m</code> 分支各有独立 <strong><code>origin</code> + <code>cpCode</code></strong>（www→CP 1435977，m→CP 1435979）✅</td>
+              <td>初版写成"顶层共用一套 origin"，<strong>遗漏 Hostnames 分支的 origin 覆盖</strong></td>
+              <td><span class="badge pending">⚠ 已修正</span><br><span style="color:var(--text-muted);font-size:.75em">（10-property §4 CP Code 表 + 31-domain §2）</span></td>
+            </tr>
+            <tr>
+              <td>③a</td>
+              <td>UA <code>LqPassWaf/851.3</code> 不跳转</td>
+              <td>PC→M 规则 CRIT：<code>userAgent IS_NOT_ONE_OF ["LqPassWaf/851.3", "LqPassWaf/851.3 (it; Categraf)"]</code> ✅</td>
+              <td><strong>初版完全漏掉</strong></td>
+              <td><span class="badge fail">❌ 已修正</span><br><span style="color:var(--text-muted);font-size:.75em">（10-property §12 + 30/31 §5）</span></td>
+            </tr>
+            <tr>
+              <td>③b</td>
+              <td>Apple Pay 路径不跳转</td>
+              <td>M→PC 规则 CRIT：<code>path DOES_NOT_MATCH_ONE_OF ["/.well-known/apple-developer-merchantid-domain-association.txt"]</code> ✅</td>
+              <td><strong>初版完全漏掉</strong></td>
+              <td><span class="badge fail">❌ 已修正</span></td>
+            </tr>
+            <tr>
+              <td>③c</td>
+              <td>跳转响应码</td>
+              <td><code>redirect</code> behavior <code>responseCode=302</code>（不是 301）✅</td>
+              <td>初版写 301</td>
+              <td><span class="badge fail">❌ 已修正</span></td>
+            </tr>
+            <tr>
+              <td>③d</td>
+              <td>js/css 扩展名不跳转</td>
+              <td>两条跳转规则 CRIT 都有 <code>fileExtension IS_NOT_ONE_OF ["js", "css"]</code> ✅</td>
+              <td><strong>初版完全漏掉</strong></td>
+              <td><span class="badge fail">❌ 已修正</span></td>
+            </tr>
+            <tr>
+              <td>④a</td>
+              <td>首页 6h</td>
+              <td><code>Cache Tag &amp; Page Caching / 首页: caching MAX_AGE=6h, cacheTag=bf-all+bf-home</code> ✅</td>
+              <td>已写 6h，但<strong>漏掉 cacheTag</strong></td>
+              <td><span class="badge pending">⚠ 已修正</span><br><span style="color:var(--text-muted);font-size:.75em">（补齐 Cache Tags 列）</span></td>
+            </tr>
+            <tr>
+              <td>④b</td>
+              <td>默认 TTL=0</td>
+              <td>Offload origin 顶层 <code>caching behavior=NO_STORE</code>；HTML pages 子规则也是 <code>NO_STORE</code>；Cache Tag &amp; Page Caching 节点覆盖首页/列表/详情/博客/活动页 ✅</td>
+              <td>已写 NO_STORE（等价于"运维口径 ttl=0"）</td>
+              <td><span class="badge pass">✅ 一致</span></td>
+            </tr>
+            <tr>
+              <td>④c</td>
+              <td><code>/blog</code> 智能精确匹配</td>
+              <td><code>/blog/*</code> path 匹配（<code>path MATCHES_ONE_OF ["/blog/*"]</code>）✅</td>
+              <td>已写 <code>/blog/*</code> 365d</td>
+              <td><span class="badge pass">✅ 一致</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ §3 初版错误复盘 ============ -->
+  <section id="errors">
+    <h2><span class="chapter-num">§3</span> 初版文档的 7 个错误（复盘）</h2>
+    <p class="section-intro">md 标题原为"4 个错误"，实际明细 7 条；下面按 <code>ERR-01</code>~<code>ERR-07</code> 列出。</p>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">ERR-01</span>redirect 301 → 实际 302</div>
+        <span class="badge fail">已修正</span>
+      </div>
+      <div class="rule-body">
+        <p><strong>影响范围：</strong>10-property §12、30/31 §5。</p>
+        <p><strong>根因：</strong>只看了 behavior 名字 <code>redirect</code>，没看 <code>options.responseCode</code> 字段。</p>
+      </div>
+    </div>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">ERR-02</span>漏 <code>LqPassWaf</code> UA 白名单</div>
+        <span class="badge fail">已修正</span>
+      </div>
+      <div class="rule-body">
+        <p><strong>影响范围：</strong>所有 redirect 描述。</p>
+        <p><strong>根因：</strong>criteria 数组只粗略看了头两个，没扫完。</p>
+      </div>
+    </div>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">ERR-03</span>漏 Apple Pay <code>.well-known</code> 路径白名单</div>
+        <span class="badge fail">已修正</span>
+      </div>
+      <div class="rule-body">
+        <p><strong>影响范围：</strong>M→PC 分支。</p>
+        <p><strong>根因：</strong>同上，没把 criteria 跑完。</p>
+      </div>
+    </div>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">ERR-04</span>漏 js/css 扩展名白名单</div>
+        <span class="badge fail">已修正</span>
+      </div>
+      <div class="rule-body">
+        <p><strong>影响范围：</strong>两条 redirect。</p>
+        <p><strong>根因：</strong>同上，<code>fileExtension IS_NOT_ONE_OF</code> 是第三个 criteria。</p>
+      </div>
+    </div>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">ERR-05</span>漏 Hostnames 分支 origin + CP Code 覆盖</div>
+        <span class="badge fail">已修正</span>
+      </div>
+      <div class="rule-body">
+        <p><strong>影响范围：</strong>10-property §3/§4、PC/M ALB 分流。</p>
+        <p><strong>根因：</strong>只看了顶层 default 的 origin，没递归进 <code>Hostnames</code> 父规则。</p>
+      </div>
+    </div>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">ERR-06</span>列表 &amp; 详情页 cacheId 描述含糊</div>
+        <span class="badge pending">已修正</span>
+      </div>
+      <div class="rule-body">
+        <p><strong>影响范围：</strong>10-property §7、30 §4。</p>
+        <p><strong>根因：</strong>初版没写清是 <strong><code>EXCLUDE_QUERY_PARAMS</code> + 34 个追踪参数</strong>，改后明确。</p>
+      </div>
+    </div>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">ERR-07</span>Cache Tags 完全没提</div>
+        <span class="badge fail">已修正</span>
+      </div>
+      <div class="rule-body">
+        <p><strong>影响范围：</strong>所有缓存表。</p>
+        <p><strong>根因：</strong>把 <code>cacheTag</code> behavior 当成元数据忽略，没意识到运维是靠 tag 做 Fast Purge。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ §4 验证脚本保留 ============ -->
+  <section id="verify">
+    <h2><span class="chapter-num">§4</span> 验证脚本保留</h2>
+    <p class="section-intro">可重跑、可留痕。脚本用的是 raw JSON，不依赖活体 API。</p>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">VR-01</span>脚本与原始数据位置</div>
+        <span class="badge info">path</span>
+      </div>
+      <div class="rule-body">
+        <ul>
+          <li><strong>本地脚本</strong>：<code>/tmp/verify.py</code>（重启后会丢，可从本文件复制）</li>
+          <li><strong>原始 JSON</strong>：<code>raw/essl_rules.json</code>、<code>raw/essl_hostnames.json</code> 永久保存</li>
+        </ul>
+<pre class="code" data-label="shell">python3 /tmp/verify.py &gt; /tmp/verify-out.txt
+less /tmp/verify-out.txt</pre>
+        <div class="expect"><strong>输出分 7 段：</strong>顶层 caching、Redirect 分支、Hostnames 分支、列表&amp;详情页 cacheId、<code>/static/</code> cacheId、Cache Tag 标签值、活动页 TTL。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ §5 状态快照 ============ -->
+  <section id="snapshot">
+    <h2><span class="chapter-num">§5</span> 修正后文档状态快照</h2>
+    <p class="section-intro">运维反馈是否已被反映到具体 md / html 文件 + 关键更新位置。</p>
+
+    <table class="tbl">
+      <thead>
+        <tr><th>文件</th><th>是否已反映运维反馈</th><th>关键更新位置</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><a href="./10-property-essl.html">10-property-beautyforever-essl</a></td>
+          <td><span class="badge pass">✅</span></td>
+          <td>§4 CP Code 表、§7 Cache Tag &amp; Page Caching 表（4 列 + 34 参数 EXCLUDE）、§12 Redirect（302 + 全量白名单）</td>
+        </tr>
+        <tr>
+          <td><a href="./30-domain-www.html">30-domain-www-beautyforever-com</a></td>
+          <td><span class="badge pass">✅</span></td>
+          <td>§4 缓存策略表扩成 4 列（加 Cache Tag 和 Cache Key 构成）</td>
+        </tr>
+        <tr>
+          <td><a href="./31-domain-m.html">31-domain-m-beautyforever-com</a></td>
+          <td><span class="badge pass">✅</span></td>
+          <td>§2 CP Code <code>1435979</code>、§4 同 www 的 4 列表、§5 Desktop→PC 白名单</td>
+        </tr>
+        <tr>
+          <td><a href="./32-domain-api.html">32-domain-api-beautyforever-com</a></td>
+          <td><span class="badge skip">N/A</span></td>
+          <td>api 不涉及 PC/M 跳转和页面缓存 — —</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ============ §6 2026-04-21 Live CLI Audit ============ -->
+  <section id="live-audit">
+    <h2><span class="chapter-num">§6</span> 2026-04-21 Live CLI Audit（补充核对）</h2>
+    <p class="section-intro">
+      <code>doc/</code> 成稿后再用 <code>akamai pm</code> / PAPI / AppSec / Network-List / activations 端点对照一次生产现状，捕捉 raw JSON 快照之后的漂移。
+    </p>
+
+    <h3 style="color: var(--aws-orange); margin-top: 24px;">6.1 核心版本号（API 实时核对）</h3>
+    <table class="data-table">
+      <thead><tr><th>对象</th><th>生产</th><th>staging/latest</th><th>与 raw / doc 一致?</th></tr></thead>
+      <tbody>
+        <tr><td>Property <code>beautyforever.com_essl</code> (prp_910841)</td><td><strong>v62</strong></td><td>v63</td><td>✅ raw=v62 字节级一致（<code>diff</code> 为空）</td></tr>
+        <tr><td>Property <code>api.beautyforever.com</code> (prp_956325)</td><td><strong>v10</strong></td><td>v11</td><td>✅ raw=v10 字节级一致</td></tr>
+        <tr><td>Security Configuration 89613</td><td><strong>v145</strong></td><td>v145</td><td>✅ 全网段统一</td></tr>
+      </tbody>
+    </table>
+
+    <h3 style="color: var(--aws-orange); margin-top: 24px;">6.2 新发现（原文档未写）</h3>
+
+    <div style="background: var(--warn-dim); border-left: 3px solid var(--warn); padding: 12px 16px; margin: 12px 0; border-radius: 4px;">
+      <strong>① 双 Property 均有 staging-only HSTS 改动</strong>（prp_910841 v63 / prp_956325 v11）<br>
+      激活时间 2026-01-06 08:35 UTC（仅 STAGING）；备注"配置 HSTS 两年"。<br>
+      变更：<code>httpStrictTransportSecurity</code> = <code>{enable:true, maxAge:TWO_YEARS, includeSubDomains:true, preload:true, redirect:false}</code><br>
+      PAPI 告警："Enabling preload makes future downgrade to HTTP difficult."<br>
+      影响：迁移到 CloudFront 时须同步配置 Response Headers Policy，并评估 preload 不可逆风险。
+    </div>
+
+    <div style="background: var(--fail-dim); border-left: 3px solid var(--fail); padding: 12px 16px; margin: 12px 0; border-radius: 4px;">
+      <strong>② Network List <code>146351_SECURITYBYPASSLIST</code> 实际为空</strong><br>
+      <code>elementCount=0, list=null</code>, 最后更新 2023-02-16。<br>
+      Akamai 默认创建的空 bypass list，业务上没有白名单 IP 生效。<br>
+      原文档（20/30/31/99/40）都暗示它是有内容的 IP 白名单 —— 已在 20-waf §3 Target #1、30-www §7、31-m §7 纠正。
+    </div>
+
+    <div style="background: var(--aws-blue-dim); border-left: 3px solid var(--aws-blue); padding: 12px 16px; margin: 12px 0; border-radius: 4px;">
+      <strong>③ ASN 202425 拦截规则定位</strong><br>
+      Custom Rule id <code>60383229</code>, name "Deny asnumber 202425 for www.beautyforever.com"<br>
+      conditions = <code>hostMatch(www.beautyforever.com)</code> <strong>AND</strong> <code>asNumberMatch(202425, useXForwardForHeaders=false)</code>（均 positiveMatch=true）<br>
+      operation=AND, tag=<code>["as-number"]</code>, ruleActivated=true<br>
+      不在 Network List / Penalty Box，是共享 WAF 配置下的独立 Custom Rule，hostMatch 限定只对 www 生效。
+    </div>
+
+    <div style="background: var(--skip-dim); border-left: 3px solid var(--skip); padding: 12px 16px; margin: 12px 0; border-radius: 4px;">
+      <strong>④ 同账号其他 <code>*beautyforever*</code> property</strong>（已在 <a href="./00-account.html">00-account §2</a> 列出）<br>
+      <code>beautyforever.com</code> (prp_883650) v36 从未 production；
+      <code>beautyforever.com_akamai_test</code> (prp_899790) v9；
+      <code>dev-beautyforever.com</code> (prp_923813) v51；
+      <code>sapi.beautyforever.com</code> (prp_1093527) v6（WAF <code>Policy Api-Evaluation</code>，未正式 enforce）。<br>
+      对生产流量迁移无直接影响，但若客户要求整体搬迁账号需一并入范围。
+    </div>
+
+    <h3 style="color: var(--aws-orange); margin-top: 24px;">6.3 WAF v145 其他盘点（备案）</h3>
+    <ul>
+      <li><strong>Custom Rules 激活 19 条</strong>：bypass test agent、Deny UA 系列、Deny Client TLS Fingerprint 系列、Monitor vcdn.nadula.com、GeoDeny beautyforever/nadula/unice、ASnumber8075 四站、deny referer eslq=seeds、11-21 Attack Deny、Deny asnumber 202425。tag 规范，可 1:1 翻译到 AWS WAF Custom Rules。</li>
+      <li><strong>Rate Policies 5 条</strong>：Origin Error (5/8)、Page View Requests (15/25)、POST Page Requests (3/5)、API Page View Requests (13/20)、Static resource (13/20)，全部 <code>clientIdentifier=ip</code>。</li>
+      <li><strong>Security Policies 3 条</strong>：<code>Policy Deny</code> (qik1_201886)、<code>Policy Alert</code> (1218_239915)、<code>Policy Api</code> (0124_243504)。</li>
+    </ul>
+
+    <h3 style="color: var(--aws-orange); margin-top: 24px;">6.4 重跑命令</h3>
+    <pre class="code"><code># 实时对比 raw JSON 与当前生产版本
+python3 /tmp/akamai_query.py rules prp_910841 62 | tail -n +2 &gt; /tmp/essl-v62.json
+diff &lt;(jq -S . raw/essl_rules.json) &lt;(jq -S . /tmp/essl-v62.json)   # 应当为空
+
+# staging v63/v11
+python3 /tmp/akamai_query.py rules prp_910841 63 | tail -n +2 &gt; /tmp/essl-v63.json
+python3 /tmp/akamai_query.py rules prp_956325 11 | tail -n +2 &gt; /tmp/api-v11.json
+
+# activation 历史
+python3 /tmp/akamai_activations.py prp_910841
+python3 /tmp/akamai_activations.py prp_956325
+
+# Bypass Network List
+python3 /tmp/akamai_netlist.py 146351_SECURITYBYPASSLIST</code></pre>
+  </section>
+
+  <!-- ============ §7 Team Agent 可挖方向 ============ -->
+  <section id="todo">
+    <h2><span class="chapter-num">§7</span> Team Agent 继续可挖的点</h2>
+    <p class="section-intro">主干已覆盖；下列项目仍是"黑盒"或值得深挖。</p>
+
+    <div class="confirm-grid">
+      <div class="confirm-item">
+        <span class="box"></span>
+        顶层 <code>Hostnames</code> 父规则下两个分支的<strong>完整 origin / cpCode / 其他 behavior 差异</strong>（我只确认了 origin + cpCode，可能还覆盖了 sureRoute、deviceCharacteristic 等）
+      </div>
+      <div class="confirm-item">
+        <span class="box"></span>
+        <code>Advanced</code> 行为里的 XML metadata —— 运维可能在里面藏了手写规则
+      </div>
+      <div class="confirm-item">
+        <span class="box"></span>
+        Bypass Network List <code>146351_SECURITYBYPASSLIST</code> 的 <strong>实际 IP 列表</strong>（<code>akamai network-lists list --list-id 146351_SECURITYBYPASSLIST --json</code>）
+      </div>
+      <div class="confirm-item">
+        <span class="box"></span>
+        Rate Policy / Slow POST / Bot Manager 的具体触发阈值（见 <a href="./99-queries.html">99-queries</a> §Application Security）
+      </div>
+      <div class="confirm-item">
+        <span class="box"></span>
+        对 <code>utm_source=google/facebook.com/tiktok</code> 进 cacheKey 的<strong>命中率真实度</strong> —— 可以从 DataStream 拉 24h offload rate 对比
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <div>
+    Akamai 配置调研 · beautyforever.com · Module 40 · Ops Verification · 2026-04-21<br>
+    源文档：<code>../doc/40-ops-verification.md</code> · 原始 JSON：<code>../raw/*.json</code> · Keith · AWS Solutions Architect
+  </div>
+</footer>
+
+<script src="./assets/app.js" defer></script>
+
+</body>
+</html>

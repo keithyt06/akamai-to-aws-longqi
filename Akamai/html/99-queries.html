@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>模块 99 · CLI / PAPI Queries — Akamai · beautyforever.com</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./assets/style.css" />
+</head>
+<body>
+<nav class="topnav">
+  <div class="brand"><span class="dot">●</span> Akamai · beautyforever.com</div>
+  <div class="nav-links">
+    <a href="./index.html">Home</a>
+    <a href="./00-account.html">00 Account</a>
+    <a href="./10-property-essl.html">10 Property ESSL</a>
+    <a href="./11-property-api.html">11 Property API</a>
+    <a href="./20-waf.html">20 WAF</a>
+    <a href="./30-domain-www.html">30 Domain www</a>
+    <a href="./31-domain-m.html">31 Domain m</a>
+    <a href="./32-domain-api.html">32 Domain api</a>
+    <a href="./40-ops-verification.html">40 Ops Verify</a>
+    <a href="./90-dynamic-static.html">90 Dyn/Static</a>
+    <a href="./99-queries.html" class="active">99 Queries</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="hero-inner">
+    <span class="hero-badge">Module 99 · CLI / PAPI Queries</span>
+    <h1>CLI / <span class="accent">PAPI</span> Queries</h1>
+    <p class="subtitle">重现本次调研 / Team Agent 继续深挖的 CLI 和 API 命令集。Akamai CLI + Python edgegrid 直连 PAPI / AppSec，覆盖 Property / WAF / Network List 全链路。</p>
+    <div class="meta">
+      <span><strong>Akamai CLI</strong> v2.0.3</span>
+      <span><strong>Python</strong> edgegrid-python</span>
+      <span><strong>复现性</strong> 所有命令可本地复现</span>
+      <span><strong>快照</strong> <code>raw/*.json</code> 已落盘</span>
+    </div>
+  </div>
+</header>
+
+<main class="container">
+
+  <div class="toc">
+    <h3>Table of Contents</h3>
+    <ul>
+      <li><a href="#credentials">§1 前置：凭据（edgerc）</a></li>
+      <li><a href="#cli-common">§2 常用 CLI 命令</a></li>
+      <li><a href="#cli-pm">§2.1 Property Manager</a></li>
+      <li><a href="#cli-appsec">§2.2 Application Security（WAF）</a></li>
+      <li><a href="#papi-python">§3 直调 PAPI（Python edgegrid）</a></li>
+      <li><a href="#raw-saved">§4 原始响应已保存</a></li>
+      <li><a href="#quick-verify">§5 快速验证（活体）</a></li>
+      <li><a href="#id-cheatsheet">§6 重要 ID 速查</a></li>
+    </ul>
+  </div>
+
+  <div class="callout">
+    <strong>范围</strong>：本文件覆盖 <code>99-queries.md</code>，是重现本次调研的所有 CLI + Python 命令手册。
+    所有命令在本机 <code>/root/.edgerc</code> 凭据下可直接跑；所有命令的 JSON 响应已落盘到
+    <code>../raw/*.json</code>，下游 Team Agent 可以不打 Akamai API 而直接 <code>jq</code> 离线分析。
+  </div>
+
+  <!-- ============ §1 凭据 ============ -->
+  <section id="credentials">
+    <h2><span class="chapter-num">§1</span> 前置：凭据</h2>
+    <p class="section-intro"><code>/root/.edgerc</code> 内置三节（<code>default</code>、<code>papi</code>、<code>appsec</code>）同一套 key。不同 CLI 子命令会优先挑不同 section，但 key 相同。</p>
+
+    <div class="callout warn">
+      <strong>⚠ 保密警示：</strong>下方 <code>client_secret</code> / <code>access_token</code> / <code>client_token</code> 为该账号的 Akamai API 凭据，
+      <strong>不得外泄、不得写入 git、不得在共享屏幕上截图</strong>。如泄露需立即在 Akamai Control Center
+      (Identity &amp; Access → API Clients) 旋转（rotate）。
+    </div>
+
+<pre class="code" data-label="ini">[default]
+client_secret = 1rNcDeJWFvInSW+rS4YEJSsX54HgFvCG2nEXYG1InBs=
+host = akab-cy5rj3csv3v7dn24-d3vlgpdgxrfscikd.luna.akamaiapis.net
+access_token = akab-wreeb2qdtwedjpl3-4edtwmulhcgd4ali
+client_token = akab-25vbjix7hlb7mvdq-5i3asijmzu47elt5
+
+[papi]
+（同上）
+
+[appsec]
+（同上）</pre>
+
+    <div class="callout warn">
+      <strong>当前 API client 缺失 grant：</strong><code>POST /papi/v1/search/find-by-value</code>，
+      所以基于搜索的 CLI 命令（<code>pm search</code> / <code>pm lph</code>）会 403。
+      <strong>绕路：</strong>先 <code>pm list-properties</code> 拿 Property ID，再显式按 ID 查。
+    </div>
+  </section>
+
+  <!-- ============ §2 常用 CLI ============ -->
+  <section id="cli-common">
+    <h2><span class="chapter-num">§2</span> 常用 CLI 命令</h2>
+    <p class="section-intro">Akamai CLI 官方包：<code>property-manager</code>（<code>pm</code>）与 <code>appsec</code>。下面列出本次调研真实跑过的所有命令。</p>
+
+    <!-- Property Manager -->
+    <div id="cli-pm" class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">CLI-PM</span>Property Manager</div>
+        <span class="badge info">akamai pm</span>
+      </div>
+      <div class="rule-body">
+        <p>账号层 → 组层 → Property 层层深入；注意 <code>list-properties</code> 必须同时带 <code>-c</code> 和 <code>-g</code>。</p>
+<pre class="code" data-label="bash"># 账号信息
+akamai pm list-contracts
+akamai pm list-groups
+
+# Property 列表（必须带 contract + group）
+akamai pm list-properties -c ctr_V-4GARL4E -g grp_230665
+
+# Rule tree（推荐用 Python edgegrid 直连，CLI 下面命令在本权限下可能触发 find-by-value）
+akamai pm sr -p beautyforever.com_essl --propver 62
+akamai pm sr -p api.beautyforever.com --propver 10</pre>
+        <div class="expect"><strong>说明：</strong>在本次的 API client 权限下，<code>pm sr</code> 走的是 <code>find-by-value</code>，有可能 403；若 403 请切到 §3 的 Python 直调模式（按显式 Property ID 查）。</div>
+      </div>
+    </div>
+
+    <!-- Application Security -->
+    <div id="cli-appsec" class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">CLI-APPSEC</span>Application Security（WAF）</div>
+        <span class="badge info">akamai appsec</span>
+      </div>
+      <div class="rule-body">
+        <p>appsec 系列覆盖 WAF 配置的各个子域：configs / version / policies / match-targets / coverage / custom-rules / attack-group / rate / slow-post / bot / reputation；以及外围的 network-lists（需另装）。</p>
+<pre class="code" data-label="bash"># 所有 security configs
+akamai appsec configs --json
+
+# config version 元数据
+akamai appsec version --config-id 89613 --version 145 --json
+
+# 所有 policies
+akamai appsec policies --config-id 89613 --version 145 --json
+
+# match-targets（hostname → policy 映射）
+akamai appsec match-targets --config-id 89613 --version 145 --json
+
+# hostname 覆盖度
+akamai appsec hostname-coverage --json
+
+# —— 下面几组 Team Agent 可接着挖 ——
+
+# 某 policy 的 selected hostnames
+akamai appsec selected-hostnames --config-id 89613 --version 145 --policy-id qik1_201886 --json
+
+# Custom Rules
+akamai appsec custom-rules --config-id 89613 --json
+akamai appsec custom-rules --config-id 89613 --version 145 --json
+
+# Attack Group 规则动作（每个 policy 单独拉）
+akamai appsec attack-group --config-id 89613 --version 145 --policy-id qik1_201886 --json   # Policy Deny
+akamai appsec attack-group --config-id 89613 --version 145 --policy-id 1218_239915 --json   # Policy Alert
+akamai appsec attack-group --config-id 89613 --version 145 --policy-id 0124_243504 --json   # Policy Api
+
+# Rate 限流
+akamai appsec rate-policies --config-id 89613 --version 145 --json
+
+# Slow POST 防护
+akamai appsec slow-post --config-id 89613 --version 145 --policy-id qik1_201886 --json
+
+# Bot Manager
+akamai appsec bot-category-action --config-id 89613 --version 145 --policy-id qik1_201886 --json
+akamai appsec bot-detection --config-id 89613 --version 145 --json
+akamai appsec custom-bot-category --config-id 89613 --version 145 --json
+
+# Reputation
+akamai appsec reputation-profile --config-id 89613 --version 145 --json
+
+# Network Lists（Bypass 白名单等）—— 需要 network-lists CLI
+akamai install network-lists
+akamai network-lists list --json | jq '.networkLists[] | select(.uniqueId=="146351_SECURITYBYPASSLIST")'</pre>
+        <div class="expect"><strong>说明：</strong>带 <code>--json</code> 后输出 JSON，推荐配合 <code>jq</code> 过滤。<code>attack-group</code> 需按 policy 单独拉 3 次。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ §3 直调 PAPI ============ -->
+  <section id="papi-python">
+    <h2><span class="chapter-num">§3</span> 直调 PAPI（绕开 CLI 的 find-by-value 限制）</h2>
+    <p class="section-intro">使用 Python <code>akamai.edgegrid</code>，按显式 Property ID 拉取 hostnames / rule tree / edge hostname / activations / CP codes。</p>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">PY-EDGEGRID</span>Python edgegrid 通用客户端</div>
+        <span class="badge info">python</span>
+      </div>
+      <div class="rule-body">
+<pre class="code" data-label="python">import os, requests
+from akamai.edgegrid import EdgeGridAuth, EdgeRc
+from urllib.parse import urljoin
+
+rc = EdgeRc(os.path.expanduser("~/.edgerc"))
+sec = "default"
+base = f"https://{rc.get(sec,'host')}"
+s = requests.Session()
+s.auth = EdgeGridAuth.from_edgerc(rc, sec)
+
+CONTRACT = "ctr_V-4GARL4E"
+GROUP    = "grp_230665"
+
+def get(path, **params):
+    params.update(contractId=CONTRACT, groupId=GROUP)
+    return s.get(urljoin(base, path), params=params).json() if 'json' in s.get(urljoin(base, path), params=params).headers.get('content-type','') else s.get(urljoin(base, path), params=params).text
+
+# Hostnames
+get("/papi/v1/properties/prp_910841/versions/62/hostnames")
+get("/papi/v1/properties/prp_956325/versions/10/hostnames")
+
+# Rule tree
+get("/papi/v1/properties/prp_910841/versions/62/rules")
+get("/papi/v1/properties/prp_956325/versions/10/rules")
+
+# Edge Hostnames 详情
+get("/papi/v1/edgehostnames/ehn_5327863")
+get("/papi/v1/edgehostnames/ehn_5406989")
+
+# Activations 历史
+get("/papi/v1/properties/prp_910841/activations")
+get("/papi/v1/properties/prp_956325/activations")
+
+# CP Codes
+get("/papi/v1/cpcodes")</pre>
+        <div class="expect">
+          <strong>本地已有现成脚本：</strong><code>/tmp/akamai_query.py</code>，命令行：
+        </div>
+<pre class="code" data-label="bash">python3 /tmp/akamai_query.py hostnames prp_910841 62
+python3 /tmp/akamai_query.py rules     prp_910841 62</pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ §4 raw 响应 ============ -->
+  <section id="raw-saved">
+    <h2><span class="chapter-num">§4</span> 原始响应已保存</h2>
+    <p class="section-intro">本目录 <a href="../raw/">raw/</a> 已包含（采集时间 2026-04-21）以下快照，可以直接 <code>cat</code> / <code>jq</code> 离线分析，不需要再打 Akamai API。</p>
+    <table class="tbl">
+      <thead>
+        <tr><th>文件</th><th>内容</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>essl_hostnames.json</code></td><td><code>beautyforever.com_essl</code> v62 的 hostnames</td></tr>
+        <tr><td><code>essl_rules.json</code></td><td><code>beautyforever.com_essl</code> v62 的完整 rule tree</td></tr>
+        <tr><td><code>api_hostnames.json</code></td><td><code>api.beautyforever.com</code> v10 的 hostnames</td></tr>
+        <tr><td><code>api_rules.json</code></td><td><code>api.beautyforever.com</code> v10 的完整 rule tree</td></tr>
+        <tr><td><code>waf_version.json</code></td><td>安全配置 v145 元数据</td></tr>
+        <tr><td><code>waf_policies.json</code></td><td>3 条 security policies</td></tr>
+        <tr><td><code>waf_match_targets.json</code></td><td>hostname → policy 映射</td></tr>
+        <tr><td><code>waf_hostname_coverage.json</code></td><td>全账号 hostname WAF 覆盖度</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ============ §5 快速验证 ============ -->
+  <section id="quick-verify">
+    <h2><span class="chapter-num">§5</span> 快速验证（活体）</h2>
+    <p class="section-intro">三条命令：边缘响应头、强制绕缓存、边缘 DNS 解析。用于快速 sanity-check 当前线上行为。</p>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">CMD-01</span>边缘响应头（X-Cache / X-True-Cache-Key）</div>
+        <span class="badge info">curl</span>
+      </div>
+      <div class="rule-body">
+<pre class="code" data-label="bash"># 看 Akamai 边缘返回头（X-Cache / X-True-Cache-Key）
+curl -sI 'https://www.beautyforever.com/' | head -30
+curl -sI 'https://m.beautyforever.com/'   | head -30
+curl -sI 'https://api.beautyforever.com/' | head -30</pre>
+        <div class="expect"><strong>预期：</strong>www/m 命中 Page Cache 返回 <code>X-Cache: TCP_HIT_*</code> 或 <code>TCP_MISS_*</code>；api 基本都是 <code>NO_STORE</code> / <code>TCP_MISS_*</code>。</div>
+      </div>
+    </div>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">CMD-02</span><code>?akaCache=nce</code> 强制绕过缓存</div>
+        <span class="badge info">curl</span>
+      </div>
+      <div class="rule-body">
+<pre class="code" data-label="bash"># 强制绕过缓存
+curl -sI 'https://www.beautyforever.com/?akaCache=nce' | grep -i cache</pre>
+        <div class="expect"><strong>预期：</strong>一定是 <code>MISS</code> 或 <code>NO_STORE</code>（Akamai 专属约定，迁移到 CloudFront 需要保留等价 backdoor）。</div>
+      </div>
+    </div>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">CMD-03</span>边缘 DNS 解析（确认落点）</div>
+        <span class="badge info">dig</span>
+      </div>
+      <div class="rule-body">
+<pre class="code" data-label="bash"># 看边缘 DNS 解析（确认落点）
+dig +short www.beautyforever.com
+dig +short beautyforever.com.edgekey.net
+dig +short api.beautyforever.com
+dig +short api.beautyforever.com.edgekey.net</pre>
+        <div class="expect"><strong>预期：</strong>最终落到 <code>*.akamaiedge.net</code> 的多条 A 记录；<code>edgekey.net</code> 是 CNAME 链条中段，用来关联 Edge Hostname。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ §6 重要 ID 速查 ============ -->
+  <section id="id-cheatsheet">
+    <h2><span class="chapter-num">§6</span> 重要 ID 速查</h2>
+    <p class="section-intro">本次调研涉及的所有资源 ID——账号、Contract、Group、两个 Property、两个 Edge Hostname、CP Code、WAF Config / Policies / Network List / Match Targets。</p>
+
+    <table class="tbl">
+      <thead>
+        <tr><th>资源</th><th>ID</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Account</td><td><code>act_F-AC-4891758</code></td></tr>
+        <tr><td>Contract</td><td><code>ctr_V-4GARL4E</code></td></tr>
+        <tr><td>Group</td><td><code>grp_230665</code></td></tr>
+        <tr><td>Property <code>beautyforever.com_essl</code></td><td><code>prp_910841</code> / Asset <code>aid_11153387</code></td></tr>
+        <tr><td>Property <code>api.beautyforever.com</code></td><td><code>prp_956325</code> / Asset <code>aid_11208151</code></td></tr>
+        <tr><td>Edge Hostname <code>beautyforever.com.edgekey.net</code></td><td><code>ehn_5327863</code></td></tr>
+        <tr><td>Edge Hostname <code>api.beautyforever.com.edgekey.net</code></td><td><code>ehn_5406989</code></td></tr>
+        <tr><td>CP Code www/m</td><td><code>1435979</code></td></tr>
+        <tr><td>WAF Config</td><td><code>89613</code> / v145</td></tr>
+        <tr><td>WAF Policy Deny</td><td><code>qik1_201886</code></td></tr>
+        <tr><td>WAF Policy Alert</td><td><code>1218_239915</code></td></tr>
+        <tr><td>WAF Policy Api</td><td><code>0124_243504</code></td></tr>
+        <tr><td>WAF Bypass Network List</td><td><code>146351_SECURITYBYPASSLIST</code></td></tr>
+        <tr><td>Match Target (www+m)</td><td><code>5789054</code></td></tr>
+        <tr><td>Match Target (tapi)</td><td><code>8996562</code></td></tr>
+        <tr><td>Match Target (api)</td><td><code>7384226</code></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <div>
+    Akamai 配置调研 · beautyforever.com · 2026-04-21<br>
+    源文档：<code>../doc/*.md</code> · 原始 JSON：<code>../raw/*.json</code> · Keith · AWS Solutions Architect
+  </div>
+</footer>
+
+<script src="./assets/app.js" defer></script>
+
+</body>
+</html>

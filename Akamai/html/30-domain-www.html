@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>模块 30 · Domain www.beautyforever.com — Akamai</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./assets/style.css" />
+</head>
+<body>
+<nav class="topnav">
+  <div class="brand"><span class="dot">●</span> Akamai · beautyforever.com</div>
+  <div class="nav-links">
+    <a href="./index.html">Home</a>
+    <a href="./00-account.html">00 Account</a>
+    <a href="./10-property-essl.html">10 Property essl</a>
+    <a href="./11-property-api.html">11 Property api</a>
+    <a href="./20-waf.html">20 WAF</a>
+    <a href="./30-domain-www.html" class="active">30 Domain www</a>
+    <a href="./31-domain-m.html">31 Domain m</a>
+    <a href="./32-domain-api.html">32 Domain api</a>
+    <a href="./40-ops-verification.html">40 Ops</a>
+    <a href="./90-dynamic-static.html">90 Dynamic/Static</a>
+    <a href="./99-queries.html">99 Queries</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="hero-inner">
+    <span class="hero-badge">Module 30 · Domain www.beautyforever.com</span>
+    <h1>Domain · <span class="accent">www.beautyforever.com</span></h1>
+    <p class="subtitle">
+      单域名穿透视图——把 CDN Property（<code>beautyforever.com_essl</code>）+ WAF（<code>Policy Deny</code>）+ 回源 Nuxt SSR 串起来。
+      详细配置见 <a href="./10-property-essl.html">Property essl</a> 与 <a href="./20-waf.html">WAF Config</a>；动静态判定见
+      <a href="./90-dynamic-static.html">MODULE 90</a>。
+    </p>
+    <div class="meta">
+      <span><strong>Property</strong> beautyforever.com_essl v62</span>
+      <span><strong>WAF Policy</strong> Deny (qik1_201886)</span>
+      <span><strong>Origin</strong> Nuxt SSR · us-east-2</span>
+      <span><strong>Edge Hostname</strong> ehn_5327863</span>
+      <span><strong>当天变更</strong> 2026-04-21 ASN 202425 拦截</span>
+    </div>
+  </div>
+</header>
+
+<main class="container">
+
+  <div style="background: var(--warn-dim); border: 1px solid var(--warn); border-radius: 8px; padding: 16px 20px; margin-bottom: 28px;">
+    <div style="color: var(--warn); font-weight: 700; font-size: var(--heading-size); margin-bottom: 8px;">⚠ 2026-04-21 Live Audit</div>
+    <div style="color: var(--text-primary); font-size: var(--body-size); line-height: 1.6;">
+      ① Bypass Network List <code>146351_SECURITYBYPASSLIST</code> 实际为空（<code>elementCount=0</code>）—— 无白名单 IP 生效。<br>
+      ② 当天生效的 <strong>ASN 202425 拦截规则</strong> 已定位为 Custom Rule id <code>60383229</code>，
+      <code>hostMatch(www.beautyforever.com)</code> <strong>AND</strong> <code>asNumberMatch(202425)</code>，operation=AND、双正向匹配。<br>
+      ③ Property <code>beautyforever.com_essl</code> staging/latest <strong>v63 HSTS</strong>（maxAge=TWO_YEARS, includeSubDomains+preload）<strong>尚未到生产</strong>。
+    </div>
+  </div>
+
+  <div class="toc">
+    <h3>Table of Contents</h3>
+    <ul>
+      <li><a href="#dns">§1 DNS / TLS 入口</a></li>
+      <li><a href="#property">§2 所属 Property (CDN)</a></li>
+      <li><a href="#origin">§3 回源</a></li>
+      <li><a href="#cache">§4 缓存策略（含 34 参数 EXCLUDE 列表）</a></li>
+      <li><a href="#redirect">§5 跳转 &amp; 分流规则</a></li>
+      <li><a href="#accel">§6 加速能力</a></li>
+      <li><a href="#waf">§7 安全（WAF）</a></li>
+      <li><a href="#resp-headers">§8 CDN 层响应头修改</a></li>
+      <li><a href="#origin-headers">§9 回源请求头</a></li>
+      <li><a href="#dynstatic">§10 动静态判定</a></li>
+      <li><a href="#todo">§11 Team Agent 后续可挖</a></li>
+    </ul>
+  </div>
+
+  <div class="callout">
+    <strong>范围</strong>：本页是 <code>www.beautyforever.com</code> 的单域名穿透视图，把 DNS/TLS、CDN Property、回源、缓存、跳转、WAF、响应头、动静态判定一次呈现。
+    源文件：<code>../doc/30-domain-www-beautyforever-com.md</code>。与 <a href="./31-domain-m.html">m.beautyforever.com</a> 共享同一 Property（<code>beautyforever.com_essl</code>），但 CP Code（www=1435977 / m=1435979）与部分子规则有差异。
+  </div>
+
+  <!-- ============ §1 DNS / TLS ============ -->
+  <section id="dns">
+    <h2><span class="chapter-num">§1</span> DNS / TLS 入口</h2>
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">WWW-1</span>Hostname → Edge Hostname → CPS 证书</div>
+        <span class="badge info">入口</span>
+      </div>
+      <div class="rule-body">
+        <p>客户域 <code>www.beautyforever.com</code> 通过 CNAME 挂到 Akamai Enhanced TLS Edge Hostname，证书由 CPS 托管。</p>
+        <table class="tbl">
+          <tr><th>字段</th><th>值</th></tr>
+          <tr><td>Hostname</td><td><code>www.beautyforever.com</code></td></tr>
+          <tr><td>CNAME 到 Edge Hostname</td><td><strong><code>beautyforever.com.edgekey.net</code></strong></td></tr>
+          <tr><td>TLS 类型</td><td>Enhanced TLS（ESSL）</td></tr>
+          <tr><td>证书</td><td>CPS-Managed（Akamai 托管）</td></tr>
+          <tr><td>Edge Hostname ID</td><td><code>ehn_5327863</code></td></tr>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ §2 Property ============ -->
+  <section id="property">
+    <h2><span class="chapter-num">§2</span> 所属 Property (CDN)</h2>
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">WWW-2</span>Property · beautyforever.com_essl v62</div>
+        <span class="badge pass">Production</span>
+      </div>
+      <div class="rule-body">
+        <p>www 与 m 共享同一个 Property，两者共享绝大多数规则，只有 CP Code 分流和少量移动端子规则不同。</p>
+        <table class="tbl">
+          <tr><th>字段</th><th>值</th></tr>
+          <tr><td>Property</td><td><code>beautyforever.com_essl</code></td></tr>
+          <tr><td>Property ID</td><td><code>prp_910841</code></td></tr>
+          <tr><td>Production Version</td><td><strong>62</strong></td></tr>
+          <tr><td>Product</td><td>Fresca (Ion)</td></tr>
+          <tr><td>与同 Property 共享的域名</td><td><code>m.beautyforever.com</code>（共享同一套规则）</td></tr>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ §3 Origin ============ -->
+  <section id="origin">
+    <h2><span class="chapter-num">§3</span> 回源</h2>
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">WWW-3</span>Origin · Nuxt SSR ALB (us-east-2)</div>
+        <span class="badge info">AWS ALB</span>
+      </div>
+      <div class="rule-body">
+        <ul>
+          <li><strong>Origin：</strong> <code>lq-bf-nuxt-1212474737.us-east-2.elb.amazonaws.com</code>（AWS ALB，us-east-2）</li>
+          <li>后端：Nuxt.js SSR</li>
+          <li>透传 Host 头、Origin SNI、HTTPS 443</li>
+          <li>True-Client-IP：<code>True-Client-IP</code> 响应给源站</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ §4 Cache ============ -->
+  <section id="cache">
+    <h2><span class="chapter-num">§4</span> 缓存策略（www 专属生效）</h2>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">WWW-4</span>缓存矩阵 · 12 条路径/扩展规则</div>
+        <span class="badge pass">重点</span>
+      </div>
+      <div class="rule-body">
+        <p>按路径 / 扩展分档，Cache Tag + Cache Key 构成完整呈现。列表/详情页引入 <strong>34 个追踪参数 EXCLUDE 列表</strong>（不进 cache key），细节见下方完整列表。</p>
+        <table class="tbl">
+          <thead>
+            <tr><th>路径 / 扩展</th><th>TTL</th><th>Cache Tag</th><th>Cache Key 构成</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>/</code>（首页）</td>
+              <td><strong>6h</strong></td>
+              <td><code>bf-all</code> + <code>bf-home</code></td>
+              <td>host + path + cookies(currency, group_id, abTest)</td>
+            </tr>
+            <tr>
+              <td>HTML 列表/详情页（非 <code>/activity/*</code>）</td>
+              <td><strong>6h</strong></td>
+              <td><code>bf-all</code> + <code>bf-listinfo</code></td>
+              <td>host + path + cookies + <strong>除 34 个追踪参数外的所有 query</strong>（EXCLUDE）</td>
+            </tr>
+            <tr>
+              <td><code>/blog/*</code></td>
+              <td><strong>365d</strong></td>
+              <td><code>bf-blog</code></td>
+              <td>host + path + cookies + query <code>page</code></td>
+            </tr>
+            <tr>
+              <td><code>/activity/*</code>、<code>/activity-*</code></td>
+              <td><strong>6h</strong></td>
+              <td><code>bf-all</code> + <code>bf-activity</code></td>
+              <td>host + path + cookies</td>
+            </tr>
+            <tr>
+              <td><code>/static/*</code></td>
+              <td><strong>1d</strong></td>
+              <td>—</td>
+              <td>仅 path（若带 <code>?LT1RVf0...=X</code> token 则拆版本，optional）</td>
+            </tr>
+            <tr>
+              <td><code>ext=css/js</code></td>
+              <td><strong>365d</strong></td>
+              <td>—</td>
+              <td>query <code>v</code> 作版本号</td>
+            </tr>
+            <tr>
+              <td><code>ext=jpg/png/webp/gif/...</code></td>
+              <td><strong>365d</strong></td>
+              <td>—</td>
+              <td>含所有 query 参数；响应头 <code>Cache-Control: public, max-age=31536000</code></td>
+            </tr>
+            <tr>
+              <td><code>ext=woff/woff2/otf/ttf/eot</code></td>
+              <td><strong>365d</strong></td>
+              <td>—</td>
+              <td>—</td>
+            </tr>
+            <tr>
+              <td>其它 HTML（<code>.htm/.php/.jsp/.aspx</code>）</td>
+              <td><code>NO_STORE</code></td>
+              <td>—</td>
+              <td>—</td>
+            </tr>
+            <tr>
+              <td><strong>任意带 <code>?akaCache=nce</code></strong></td>
+              <td><code>NO_STORE</code>（绕过）</td>
+              <td>—</td>
+              <td>—</td>
+            </tr>
+            <tr>
+              <td>默认行为</td>
+              <td><code>NO_STORE</code>（运维口径 "ttl=0"）</td>
+              <td>—</td>
+              <td>—</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h4 class="mt-lg">列表 &amp; 详情页的 34 个追踪参数 EXCLUDE 列表（不进 cache key）</h4>
+<pre class="code" data-label="tracking params">gad_source, utm_source, utm_medium, utm_campaign, utm_content, utm_term,
+utm_expid, utm_referrer, gclid, cx, ie, cof, siteurl, aid, campaign_id,
+fbclid, rfsn, subid, msclkid, fclid, rlid, sscid, track_xid, wtbap,
+tagtag_uid, spm, wtbae, message_id, mobile, firstname, lastname, crm_spm,
+srsltid, brid, afsrc</pre>
+
+        <div class="callout warn">
+          当 <code>utm_source=google/facebook.com/tiktok</code> 时<strong>例外</strong>：这三个值会进 cache key 拆版本，用于独立评估广告来源的命中率。
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ §5 Redirect ============ -->
+  <section id="redirect">
+    <h2><span class="chapter-num">§5</span> 跳转 &amp; 分流规则</h2>
+
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">WWW-5</span>HTTP→HTTPS 301 &amp; PC↔Mobile 302 互跳</div>
+        <span class="badge pass">重点</span>
+      </div>
+      <div class="rule-body">
+        <ul>
+          <li>HTTP → HTTPS <strong>301</strong></li>
+          <li>PC UA 访问 www → <strong>301</strong> 到 <code>m.beautyforever.com</code>（走移动）</li>
+          <li>Mobile UA 访问 m → <strong>301</strong> 到 <code>www.beautyforever.com</code>（走 PC）</li>
+        </ul>
+        <div class="callout">
+          <strong>注：</strong>MD 原文写 "301"，运维实际抓到为 <code>302</code>（详见 index 页 LIVE-03 脚本）。两者语义差异在于缓存——302 不被中间缓存固化，更安全。迁移 CloudFront 时建议统一用 <code>302</code>。
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ §6 Acceleration ============ -->
+  <section id="accel">
+    <h2><span class="chapter-num">§6</span> 加速能力</h2>
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">WWW-6</span>SureRoute · Tiered · H2/H3 · Adaptive Accel</div>
+        <span class="badge info">perf</span>
+      </div>
+      <div class="rule-body">
+        <ul>
+          <li>SureRoute（<code>PERFORMANCE</code>，仅 www + m）</li>
+          <li>Tiered Distribution</li>
+          <li>HTTP/2、HTTP/3</li>
+          <li>Adaptive Acceleration（Preconnect / Push / Preload，源数据 mPulse）</li>
+          <li>Prefetch、DNS Async Refresh</li>
+          <li>gzip ALWAYS</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ §7 WAF ============ -->
+  <section id="waf">
+    <h2><span class="chapter-num">§7</span> 安全（WAF）</h2>
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">WWW-7</span>Security Configuration 89613 v145 · Policy Deny</div>
+        <span class="badge warn">2026-04-21 变更</span>
+      </div>
+      <div class="rule-body">
+        <p>www 域挂在 Security Configuration 89613 v145 的 Match Target sequence 1，Policy 为 <strong><code>Policy Deny</code></strong>（<code>qik1_201886</code>）。详见 <a href="./20-waf.html">MODULE 20</a>。</p>
+        <table class="tbl">
+          <tr><th>字段</th><th>值</th></tr>
+          <tr><td>WAF Config</td><td><code>Security Configuration</code> (id 89613) v145</td></tr>
+          <tr><td>Match Target</td><td>sequence 1 (id 5789054)</td></tr>
+          <tr><td><strong>Policy</strong></td><td><strong><code>Policy Deny</code> (<code>qik1_201886</code>)</strong></td></tr>
+          <tr><td>Bypass Network List</td><td><code>146351_SECURITYBYPASSLIST</code>（<strong>2026-04-21 审计为空 <code>elementCount=0</code></strong>，无实际白名单 IP）</td></tr>
+          <tr><td>启用控件</td><td>WAF rules、Bot Manager、Network Layer、Rate Control、Slow POST</td></tr>
+          <tr><td>当天变更</td><td><strong style="color:var(--warn)">2026-04-21 新增：ASN 202425 + <code>www.beautyforever.com</code> 直接拦截（Custom Rule id <code>60383229</code>）</strong></td></tr>
+          <tr><td>Property staging 待上线</td><td>v63 HSTS（<code>maxAge=TWO_YEARS</code>, <code>preload</code>+<code>includeSubDomains</code>）尚未到生产</td></tr>
+        </table>
+        <div class="callout warn">
+          <strong>2026-04-21 新增拦截规则：</strong>ASN 202425 + <code>www.beautyforever.com</code> Deny。
+          已定位为 <strong>Custom Rule id <code>60383229</code></strong>，conditions = <code>hostMatch(www.beautyforever.com)</code> <strong>AND</strong> <code>asNumberMatch(202425, useXForwardForHeaders=false)</code>（均 positiveMatch=true），operation=AND，tag=<code>["as-number"]</code>。
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ §8 Response headers ============ -->
+  <section id="resp-headers">
+    <h2><span class="chapter-num">§8</span> CDN 层响应头修改</h2>
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">WWW-8</span>删除指纹头 + 添加 RUM 允许源</div>
+        <span class="badge info">hardening</span>
+      </div>
+      <div class="rule-body">
+        <ul>
+          <li>删除：<code>X-Powered-By</code>、<code>Server</code>（防后端指纹泄露）</li>
+          <li>添加：<code>Timing-Allow-Origin: *</code>（给 mPulse RUM 用）</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ §9 Origin headers ============ -->
+  <section id="origin-headers">
+    <h2><span class="chapter-num">§9</span> 回源请求头（Edge → Origin）</h2>
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">WWW-9</span>True-Client-IP · 自定义回源头 · WAF 触发码回传</div>
+        <span class="badge info">origin</span>
+      </div>
+      <div class="rule-body">
+        <ul>
+          <li>透传 <code>True-Client-IP</code></li>
+          <li><code>modifyOutgoingRequestHeader</code> 自定义头（"指定回源请求头" 子规则，值见 raw JSON）</li>
+          <li>Nuxt 回源侧可从 <code>PMUSER_TRIGGERED_RULES</code> 获取 WAF 触发的规则号</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ §10 Dynamic/Static ============ -->
+  <section id="dynstatic">
+    <h2><span class="chapter-num">§10</span> 动静态判定</h2>
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">WWW-10</span>混合偏动态（Nuxt SSR + 边缘部分静态化）</div>
+        <span class="badge info">决策依据</span>
+      </div>
+      <div class="rule-body">
+        <p><strong>类型：混合偏动态</strong>。详见 <a href="./90-dynamic-static.html">90-dynamic-static-analysis</a>。</p>
+        <ul>
+          <li>HTML 来自 Nuxt SSR（动态渲染）</li>
+          <li>首页/列表/详情/博客/活动页 在边缘按 cookie 分版本缓存 6h–365d（<strong>动态内容被边缘部分静态化</strong>）</li>
+          <li>CSS/JS/字体/图片 365d 长缓存</li>
+          <li>个性化请求（登录、购物车、搜索、结算、带 <code>?akaCache=nce</code> 的所有路径）走 <code>NO_STORE</code> 回源</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ §11 TODO ============ -->
+  <section id="todo">
+    <h2><span class="chapter-num">§11</span> Team Agent 后续可挖</h2>
+    <div class="rule">
+      <div class="rule-header">
+        <div class="rule-title"><span class="rule-id">WWW-11</span>6 个黑盒点 · 待深挖</div>
+        <span class="badge pending">TODO</span>
+      </div>
+      <div class="rule-body">
+        <ol>
+          <li>raw/essl_rules.json 中的 <strong><code>Advanced</code></strong> 节点（自定义 XML metadata）</li>
+          <li><code>Js tag</code> 注入的具体 JS 内容和触发条件</li>
+          <li>每个页面缓存子规则的 <strong>完整 query-param 白名单</strong>（详情页 utm/gclid/fbclid/... 列表很长）</li>
+          <li>Bypass Network List <code>146351_SECURITYBYPASSLIST</code> 的 IP 列表 —— <span style="color:var(--pass)">✅ 2026-04-21 已查：<code>elementCount=0</code>，空列表</span></li>
+          <li>WAF <code>Policy Deny</code> 的具体规则动作、自定义规则、Rate Policy</li>
+          <li>今天刚加的 ASN 202425 拦截落在哪个子结构，规则格式 —— <span style="color:var(--pass)">✅ 2026-04-21 已定位：Custom Rule id <code>60383229</code>，hostMatch+asNumberMatch AND</span></li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ Related ============ -->
+  <section id="related">
+    <h2>相关链接</h2>
+    <div class="mod-grid">
+      <a class="mod-card" href="./10-property-essl.html">
+        <span class="mod-num">MODULE 10</span>
+        <h3>Property · beautyforever.com_essl v62</h3>
+        <p>承载本域（www）的 CDN 主干规则树 · CP Code 分流 · 缓存矩阵 · 回源 Nuxt SSR。</p>
+      </a>
+      <a class="mod-card" href="./20-waf.html">
+        <span class="mod-num">MODULE 20</span>
+        <h3>WAF · Security Configuration 89613</h3>
+        <p>Policy Deny 落点 · Bypass List · 2026-04-21 ASN 202425 新拦截。</p>
+      </a>
+      <a class="mod-card" href="./90-dynamic-static.html">
+        <span class="mod-num">MODULE 90</span>
+        <h3>Dynamic / Static Analysis</h3>
+        <p>动静态判定结论 · 对迁移 AWS CloudFront 的影响。</p>
+      </a>
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <div>
+    Akamai · Module 30 · Domain www.beautyforever.com · 2026-04-21<br>
+    源文档：<code>../doc/30-domain-www-beautyforever-com.md</code> · 原始 JSON：<code>../raw/*.json</code> · Keith · AWS Solutions Architect
+  </div>
+</footer>
+
+<script src="./assets/app.js" defer></script>
+</body>
+</html>
