@@ -45,18 +45,29 @@ Cloudfront/
 
 ### Sub-tasks (skeleton)
 
-- [ ] **17.1 建 `response-headers` module**，输出 2 个 Response Headers Policy（www/m 一个、api 一个，api 版本不含 HSTS redirect）：
+- [ ] **17.1 建 `response-headers` module**，输出 **2 个 Response Headers Policy**，对齐 Akamai `removeVary` 策略差异（coverage B7 / I7：essl=true 要删 Vary、api=false 要保留 Vary）；加入 `Timing-Allow-Origin: *` 对齐 Akamai（coverage D5 / C7）：
 
   ```hcl
-  resource "aws_cloudfront_response_headers_policy" "bf_secure" {
-    name = "${var.project_name}-bf-secure"
+  # Shared locals
+  locals {
+    hsts_policy = {
+      access_control_max_age_sec = 63072000  # 2 years
+      include_subdomains         = true
+      preload                    = true
+      override                   = true
+    }
+  }
+
+  # www/m policy — 删 Vary（对齐 Akamai essl removeVary=true）
+  resource "aws_cloudfront_response_headers_policy" "bf_secure_www" {
+    name = "${var.project_name}-bf-secure-www"
 
     security_headers_config {
       strict_transport_security {
-        access_control_max_age_sec = 63072000  # 2 years
-        include_subdomains         = true
-        preload                    = true
-        override                   = true
+        access_control_max_age_sec = local.hsts_policy.access_control_max_age_sec
+        include_subdomains         = local.hsts_policy.include_subdomains
+        preload                    = local.hsts_policy.preload
+        override                   = local.hsts_policy.override
       }
       content_type_options { override = true }
     }
@@ -64,11 +75,49 @@ Cloudfront/
     remove_headers_config {
       items { header = "X-Powered-By" }
       items { header = "Server" }
+      items { header = "Vary" }   # essl removeVary=true
+    }
+
+    custom_headers_config {
+      items {
+        header   = "Timing-Allow-Origin"
+        value    = "*"
+        override = true
+      }
+    }
+  }
+
+  # api policy — 保留 Vary（对齐 Akamai api removeVary=false，API 侧业务需要）
+  resource "aws_cloudfront_response_headers_policy" "bf_secure_api" {
+    name = "${var.project_name}-bf-secure-api"
+
+    security_headers_config {
+      strict_transport_security {
+        access_control_max_age_sec = local.hsts_policy.access_control_max_age_sec
+        include_subdomains         = local.hsts_policy.include_subdomains
+        preload                    = local.hsts_policy.preload
+        override                   = local.hsts_policy.override
+      }
+      content_type_options { override = true }
+    }
+
+    remove_headers_config {
+      items { header = "X-Powered-By" }
+      items { header = "Server" }
+      # 不删 Vary
+    }
+
+    custom_headers_config {
+      items {
+        header   = "Timing-Allow-Origin"
+        value    = "*"
+        override = true
+      }
     }
   }
   ```
 
-  **注意**：`preload = true` 是**不可逆变更**（把域名提交到浏览器预加载列表后，退出流程复杂）。客户确认后再放行。
+  **注意**：`preload = true` 是**不可逆变更**（把域名提交到浏览器预加载列表后，退出流程复杂）。客户确认（spec §8.3 T12）后再放行。
 
 - [ ] **17.2 扩展 viewer-request Function**，把 viewer IP 规范化成两个请求头：
 
@@ -150,15 +199,67 @@ Cloudfront/
           return False, f"header {k}: expected absent, got present"
   ```
 
-- [ ] **17.6 hands-on + delivery md**：
+- [ ] **17.6 JS Tag 注入（coverage D8 / C5，viewer-response Function）**：对齐 Akamai essl §11 `Js tag` 注入的占位。
+
+  **状态**：spec §8.3 T6 明示"待客户提供具体 JS 源码后才能实现"。本 task 只建**占位 Function + attach**，源码内容先用客户提供前的 placeholder（注入一个 `<script>/* BF_JS_TAG_PLACEHOLDER */</script>` 到 `<head>` 末尾）。
+
+  ```javascript
+  // terraform/modules/cloudfront-functions/src/viewer-response.js
+  function handler(event) {
+    var res = event.response;
+    var ct = res.headers['content-type'] ? res.headers['content-type'].value : '';
+    if (ct.indexOf('text/html') < 0) return res;
+
+    // CloudFront Function viewer-response has limited body modify capability;
+    // real HTML rewrite should use Lambda@Edge for production.
+    // POC: signal presence via header, actual injection done in origin (Node.js mock ch07 step 17.7).
+    res.headers['x-bf-js-tag'] = { value: 'placeholder' };
+    return res;
+  }
+  ```
+
+  **部署**：
+  - `terraform/modules/cloudfront-functions/main.tf` 新增 `aws_cloudfront_function "viewer_response"`（publish=true）
+  - `cloudfront-www/main.tf` 的 `default_cache_behavior` + 所有 `ordered_cache_behavior` 加第二条 `function_association { event_type = "viewer-response" ... }`
+
+  **mock 侧配合**：`beautyforever/routes/www.js` + `m.js` 的 HTML 响应在 `<head>` 末尾注入 `<script>/* BF_JS_TAG_PLACEHOLDER */</script>`，等客户提供真正 JS 后替换。
+
+- [ ] **17.7 modifyOutgoingRequestHeader（coverage D7 / I6）**：对齐 Akamai essl §17 + api §14 `指定回源请求头`。
+
+  **状态**：spec §8.3 T7 明示"具体 header 名和值需读 raw JSON 或问运维"。本 task 先建**结构**，等客户补齐具体值后填充。
+
+  在 `cloudfront-www/main.tf` 和 `cloudfront-api/main.tf` 的 `origin` 块加 `custom_header`：
+
+  ```hcl
+  origin {
+    domain_name = var.origin_alb_dns
+    origin_id   = "alb-origin"
+
+    # TODO (spec §8.3 T7): after reading raw Akamai rule tree or asking ops,
+    # add specific headers here. Example placeholder:
+    # custom_header {
+    #   name  = "X-BF-From-CloudFront"
+    #   value = "1"
+    # }
+    # ...existing custom_origin_config + origin_shield...
+  }
+  ```
+
+  delivery §7.3 明示 "具体 header 值 TBD，待客户补齐"。
+
+- [ ] **17.8 hands-on + delivery md**：
 
   **重点强调**：
   - Akamai `" x-authentic-ip"`（前导空格）是 bug，新项目修正为 `x-authentic-ip`
   - HSTS preload 不可逆，客户确认后再 apply
   - `X-Powered-By` 和 `Server` 作为 response header 被删（防指纹）
   - True-Client-IP 通过 CloudFront Function 从 `CloudFront-Viewer-Address` 派生
+  - `removeVary` 两侧策略差异：www/m 删、api 保留
+  - `Timing-Allow-Origin: *` 给 RUM 跨域采集
+  - JS tag 注入：POC 只占位，等客户 JS 源码
+  - `modifyOutgoingRequestHeader`：POC 只占位，等客户补齐具体 header
 
-- [ ] **17.7 commit**：`ch07: response headers policy + hsts 2y preload + true-client-ip via function + 6 tests`
+- [ ] **17.9 commit**：`ch07: response headers + hsts 2y + true-client-ip + timing-allow-origin + vary strategy + js tag placeholder + origin custom headers`
 
 **验收信号**：
 - `curl -sI https://www.beautyforever.keithyu.cloud/` 返回 `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload`；**不含** `X-Powered-By` 和 `Server`

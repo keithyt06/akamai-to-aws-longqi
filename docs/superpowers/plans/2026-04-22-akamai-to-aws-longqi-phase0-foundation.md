@@ -445,7 +445,19 @@ Cloudfront/delivery/
 
 ## Task 03：Origin EC2 + ALB 模块
 
-**目标**：1 台 EC2（t3.small，Amazon Linux 2023，`ap-northeast-1a`）跑 Node.js mock；1 ALB 公网可达，3 条 host-based listener rule 把 `www/m/api.*` 路由到同一个 target group。
+**目标**：1 台 EC2（t3.small，Amazon Linux 2023，`ap-northeast-1a`）跑 Node.js mock；1 ALB 公网可达，3 条 listener rule 按 **`X-Viewer-Host` 自定义 header**（**不是 Host header**）把 `www/m/api.*` 路由到同一个 target group。
+
+> **⚠ 重要设计决策（对齐 coverage-matrix A4：Akamai `forwardHostHeader = REQUEST_HOST_HEADER`）：**
+> CloudFront 不允许把 viewer 的原始 Host header 直接透传到 origin（CloudFront 强制把 Origin 配置的 domain name 作为 Host 发给 origin）。因此 ALB 必须按 **自定义 header** 分流，而非 Host header。
+>
+> 流程：
+> 1. viewer 请求到达 CloudFront，Host = `www.beautyforever.keithyu.cloud`
+> 2. CloudFront Function (viewer-request) 把原始 Host 值写入 `X-Viewer-Host` 自定义 header（在 Task 05 引入）
+> 3. CloudFront 转发到 ALB，Host = ALB DNS；`X-Viewer-Host` = 原始 Host
+> 4. ALB listener rule 按 `X-Viewer-Host` 匹配路由到同一 target group（mock EC2）
+> 5. mock Node.js 读 `X-Viewer-Host` 作为 "effective host" 来分路由
+>
+> Task 03 只建 ALB + listener rule（按自定义 header）；Task 05 引入 CloudFront Function 做注入；Task 04 扩展 mock 读 `X-Viewer-Host`。
 
 **Files:**
 - Create: `Cloudfront/terraform/modules/origin-ec2/main.tf`
@@ -637,6 +649,9 @@ Cloudfront/delivery/
       }
     }
 
+    # NOTE: ALB condition uses `http_header` (X-Viewer-Host), NOT `host_header`.
+    # Reason: CloudFront does not forward viewer's original Host to origin.
+    # A CloudFront Function (see Task 05) injects X-Viewer-Host on viewer-request.
     resource "aws_lb_listener_rule" "host_routing" {
       for_each = var.hosts
 
@@ -649,7 +664,10 @@ Cloudfront/delivery/
       }
 
       condition {
-        host_header { values = [each.value] }
+        http_header {
+          http_header_name = "X-Viewer-Host"
+          values           = [each.value]
+        }
       }
     }
     ```
@@ -711,18 +729,21 @@ Cloudfront/delivery/
     # 预期耗时：约 4-5 分钟（ALB 起比较慢）
     ```
 
-- [ ] **Step 3.5：验证 EC2 mock 能通**
+- [ ] **Step 3.5：验证 EC2 mock 能通（用 `X-Viewer-Host` 模拟 CloudFront 后的流量）**
 
     ```bash
     ALB=$(terraform output -raw alb_dns_name)
     # 等 1-2 分钟让 target 变 healthy
-    curl -H 'Host: www.beautyforever.keithyu.cloud' http://$ALB/
-    # 预期：Hello from mock · Host=www.beautyforever.keithyu.cloud · Path=/
-    curl -H 'Host: api.beautyforever.keithyu.cloud' http://$ALB/ping
-    # 预期：Hello from mock · Host=api... · Path=/ping
-    curl -H 'Host: no-such.example' http://$ALB/
-    # 预期：host not routed
+    curl -H 'X-Viewer-Host: www.beautyforever.keithyu.cloud' http://$ALB/
+    # 预期：Hello from mock · Host=<alb-dns> · Path=/
+    # （Host header 是 ALB 本身 DNS；mock 实际路由逻辑在 Task 04 扩展后会改读 X-Viewer-Host）
+    curl -H 'X-Viewer-Host: api.beautyforever.keithyu.cloud' http://$ALB/ping
+    # 预期：200，命中 listener rule 并转到 target group
+    curl http://$ALB/   # 不带 X-Viewer-Host
+    # 预期：host not routed（default action）
     ```
+
+    **注意**：Task 03 阶段 Node.js mock 还是 user-data placeholder（不区分 host），只要 listener rule 能正确路由到 target group 返回 200 即可。真正按 `X-Viewer-Host` 分业务路由在 Task 04 实现。
 
 - [ ] **Step 3.6：commit**
 
@@ -856,11 +877,17 @@ Cloudfront/delivery/
     app.get('/healthz', (_req, res) => res.type('text/plain').send('ok'));
 
     // Host-based dispatch
+    // Reads X-Viewer-Host (injected by CloudFront Function in Task 05);
+    // falls back to Host header for direct-to-ALB testing (Task 03).
     app.use((req, res, next) => {
-      const host = (req.headers.host || '').toLowerCase().split(':')[0];
-      if (host === 'www.beautyforever.keithyu.cloud') return wwwRouter(req, res, next);
-      if (host === 'm.beautyforever.keithyu.cloud')   return mRouter(req, res, next);
-      if (host === 'api.beautyforever.keithyu.cloud') return apiRouter(req, res, next);
+      const effectiveHost = (
+        req.headers['x-viewer-host'] ||
+        req.headers.host ||
+        ''
+      ).toLowerCase().split(':')[0];
+      if (effectiveHost === 'www.beautyforever.keithyu.cloud') return wwwRouter(req, res, next);
+      if (effectiveHost === 'm.beautyforever.keithyu.cloud')   return mRouter(req, res, next);
+      if (effectiveHost === 'api.beautyforever.keithyu.cloud') return apiRouter(req, res, next);
       return res.status(404).type('text/plain').send('host not routed');
     });
 
@@ -970,17 +997,19 @@ Cloudfront/delivery/
     # EC2 会重建（user_data_replace_on_change = true）
     ```
 
-- [ ] **Step 4.9：验证**
+- [ ] **Step 4.9：验证（注意用 `X-Viewer-Host` 头触发 ALB listener rule）**
 
     ```bash
     ALB=$(terraform output -raw alb_dns_name)
     sleep 90  # 等 EC2 user-data 跑完（npm install 慢）
 
-    curl -H 'Host: www.beautyforever.keithyu.cloud' -s http://$ALB/ | grep 'pc mock'
-    curl -H 'Host: m.beautyforever.keithyu.cloud'   -s http://$ALB/ | grep 'm mock'
-    curl -H 'Host: api.beautyforever.keithyu.cloud' -s http://$ALB/ping | jq .ok
+    curl -H 'X-Viewer-Host: www.beautyforever.keithyu.cloud' -s http://$ALB/ | grep 'pc mock'
+    curl -H 'X-Viewer-Host: m.beautyforever.keithyu.cloud'   -s http://$ALB/ | grep 'm mock'
+    curl -H 'X-Viewer-Host: api.beautyforever.keithyu.cloud' -s http://$ALB/ping | jq .ok
     curl -s http://$ALB/healthz
     # 预期：每条匹配正常输出
+    # 注意：CloudFront 接入后（Task 05），浏览器访问 https://www.beautyforever.keithyu.cloud/
+    #       会由 CloudFront Function 自动注入 X-Viewer-Host；这里模拟的是同一效果。
     ```
 
 - [ ] **Step 4.10：commit**
@@ -992,17 +1021,96 @@ Cloudfront/delivery/
 
 ---
 
-## Task 05：CloudFront 骨架 × 2（www + api Distribution）
+## Task 05：CloudFront 骨架 × 2 + 前置 viewer-request Function（含 Origin Shield）
 
 **目标**：为 `www+m`（共用 Distribution）和 `api` 各起一个 CloudFront Distribution，origin 指向 Task 03 的 ALB，`HttpVersion = http2`，无 cache policy（全默认 Managed-CachingDisabled），ACM 证书接 Task 02 的。
 
+**同步解决 2 个 coverage-matrix Todo：**
+- **A4（C1 Host 透传修复）**：引入 phase0 级别的 CloudFront Function（viewer-request）注入 `X-Viewer-Host` header；2 个 Distribution 都绑定
+- **A7（C2 Origin Shield）**：2 个 Distribution 都启用 Origin Shield（区域 `ap-northeast-1`，与主区一致）
+
 **Files:**
+- Create: `Cloudfront/terraform/modules/cloudfront-functions/main.tf`
+- Create: `Cloudfront/terraform/modules/cloudfront-functions/variables.tf`
+- Create: `Cloudfront/terraform/modules/cloudfront-functions/outputs.tf`
+- Create: `Cloudfront/terraform/modules/cloudfront-functions/src/viewer-request.js`
 - Create: `Cloudfront/terraform/modules/cloudfront-www/main.tf`
 - Create: `Cloudfront/terraform/modules/cloudfront-www/variables.tf`
 - Create: `Cloudfront/terraform/modules/cloudfront-www/outputs.tf`
 - Create: `Cloudfront/terraform/modules/cloudfront-api/*`
 - Create: `Cloudfront/terraform/modules/route53/*`
 - Modify: root `main.tf`、`outputs.tf`
+
+### Steps - Prelude：创建 CloudFront Function（骨架版）
+
+- [ ] **Step 5.0.1：viewer-request Function 骨架源码**
+
+    `Cloudfront/terraform/modules/cloudfront-functions/src/viewer-request.js`（**phase0 骨架版**，ch02/ch03 会扩展成完整版）:
+
+    ```javascript
+    // CloudFront viewer-request Function (Phase 0 skeleton)
+    // Responsibilities (will grow):
+    //   - [phase0] Inject X-Viewer-Host so ALB listener rules can dispatch by original Host
+    //   - [ch02]   PC↔M redirect with UA/path/ext whitelists (added in Part 1)
+    //   - [ch03]   ?akaCache=nce cache-bust (added in Part 1)
+    //   - [ch05]   Query normalize (added in Part 2)
+    //   - [ch06]   Cookie cache key derivation (added in Part 2)
+    //   - [ch07]   True-Client-IP / X-Authentic-IP (added in Part 3)
+
+    function handler(event) {
+      var req = event.request;
+
+      // Phase 0: propagate viewer's original Host to origin (ALB dispatches on this)
+      if (req.headers.host) {
+        req.headers['x-viewer-host'] = { value: req.headers.host.value };
+      }
+
+      return req;
+    }
+    ```
+
+- [ ] **Step 5.0.2：module 文件**
+
+    `Cloudfront/terraform/modules/cloudfront-functions/variables.tf`:
+
+    ```hcl
+    variable "project_name" { type = string }
+    ```
+
+    `Cloudfront/terraform/modules/cloudfront-functions/main.tf`:
+
+    ```hcl
+    resource "aws_cloudfront_function" "viewer_request" {
+      name    = "${var.project_name}-viewer-request"
+      runtime = "cloudfront-js-2.0"
+      comment = "Phase 0 skeleton: inject X-Viewer-Host; extended by Parts 1-3"
+      publish = true
+      code    = file("${path.module}/src/viewer-request.js")
+    }
+    ```
+
+    `outputs.tf`:
+
+    ```hcl
+    output "function_arns" {
+      value = {
+        viewer_request = aws_cloudfront_function.viewer_request.arn
+      }
+    }
+    ```
+
+- [ ] **Step 5.0.3：root 调用**
+
+    `Cloudfront/terraform/main.tf` 追加：
+
+    ```hcl
+    module "cloudfront_functions" {
+      source       = "./modules/cloudfront-functions"
+      project_name = var.project_name
+    }
+    ```
+
+### Steps - cloudfront-www / cloudfront-api / route53
 
 ### Steps
 
@@ -1016,8 +1124,17 @@ Cloudfront/delivery/
       type        = list(string)
       description = "CNAMEs on this distribution (www + m)"
     }
-    variable "certificate_arn" { type = string }
-    variable "origin_alb_dns"  { type = string }
+    variable "certificate_arn"     { type = string }
+    variable "origin_alb_dns"      { type = string }
+    variable "viewer_request_fn_arn" {
+      type        = string
+      description = "ARN of the phase0 viewer-request Function (X-Viewer-Host injection)"
+    }
+    variable "origin_shield_region" {
+      type        = string
+      default     = "ap-northeast-1"
+      description = "Origin Shield region — equivalent of Akamai tieredDistribution"
+    }
     ```
 
     `Cloudfront/terraform/modules/cloudfront-www/main.tf`:
@@ -1028,8 +1145,11 @@ Cloudfront/delivery/
       name = "Managed-CachingDisabled"
     }
 
-    data "aws_cloudfront_origin_request_policy" "all_viewer_except_host" {
-      name = "Managed-AllViewerExceptHostHeader"
+    # AllViewer forwards all headers/cookies/query strings except Host
+    # (CloudFront always replaces Host with origin domain regardless).
+    # Our phase0 Function writes X-Viewer-Host to carry original Host to ALB.
+    data "aws_cloudfront_origin_request_policy" "all_viewer" {
+      name = "Managed-AllViewer"
     }
 
     resource "aws_cloudfront_distribution" "www" {
@@ -1049,6 +1169,12 @@ Cloudfront/delivery/
           origin_protocol_policy = "http-only"
           origin_ssl_protocols   = ["TLSv1.2"]
         }
+
+        # Origin Shield = Akamai tieredDistribution equivalent
+        origin_shield {
+          enabled              = true
+          origin_shield_region = var.origin_shield_region
+        }
       }
 
       default_cache_behavior {
@@ -1057,8 +1183,13 @@ Cloudfront/delivery/
         allowed_methods          = ["GET", "HEAD", "OPTIONS"]
         cached_methods           = ["GET", "HEAD"]
         cache_policy_id          = data.aws_cloudfront_cache_policy.caching_disabled.id
-        origin_request_policy_id = data.aws_cloudfront_origin_request_policy.all_viewer_except_host.id
+        origin_request_policy_id = data.aws_cloudfront_origin_request_policy.all_viewer.id
         compress                 = true
+
+        function_association {
+          event_type   = "viewer-request"
+          function_arn = var.viewer_request_fn_arn
+        }
       }
 
       restrictions {
@@ -1139,19 +1270,23 @@ Cloudfront/delivery/
     module "cf_www" {
       source = "./modules/cloudfront-www"
 
-      project_name    = var.project_name
-      aliases         = [local.hosts.www, local.hosts.m]
-      certificate_arn = module.acm.certificate_arns.www
-      origin_alb_dns  = module.origin.alb_dns_name
+      project_name           = var.project_name
+      aliases                = [local.hosts.www, local.hosts.m]
+      certificate_arn        = module.acm.certificate_arns.www
+      origin_alb_dns         = module.origin.alb_dns_name
+      viewer_request_fn_arn  = module.cloudfront_functions.function_arns.viewer_request
+      origin_shield_region   = var.region_primary
     }
 
     module "cf_api" {
       source = "./modules/cloudfront-api"
 
-      project_name    = var.project_name
-      aliases         = [local.hosts.api]
-      certificate_arn = module.acm.certificate_arns.api
-      origin_alb_dns  = module.origin.alb_dns_name
+      project_name           = var.project_name
+      aliases                = [local.hosts.api]
+      certificate_arn        = module.acm.certificate_arns.api
+      origin_alb_dns         = module.origin.alb_dns_name
+      viewer_request_fn_arn  = module.cloudfront_functions.function_arns.viewer_request
+      origin_shield_region   = var.region_primary
     }
 
     module "dns" {
@@ -1165,6 +1300,8 @@ Cloudfront/delivery/
       }
     }
     ```
+
+    **注意**：`cloudfront-api` 模块的 `variables.tf` 和 `main.tf` 也需要加入与 `cloudfront-www` 相同的 `viewer_request_fn_arn` + `origin_shield_region` + `function_association` + `origin_shield` 块（Step 5.2 的"完全一致的结构，但 aliases 改 api"这句话覆盖它们；实际复制粘贴时一并包含这些字段）。
 
     **关键**：`m` 的 ACM 证书在 `module.acm.certificate_arns.m` 里创建了，但 `cf_www` 用了 `www` 的 cert。由于 CloudFront 在 `aliases` 里支持多个 CNAME + 单证书（要求证书 SAN 覆盖），这里 `cf_www` 要用**含 SAN 的单证书**。**调整 Task 02**：让 `www` 证书的 `subject_alternative_names = [m.host]`。
 

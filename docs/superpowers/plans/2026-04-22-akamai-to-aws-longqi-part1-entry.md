@@ -12,6 +12,8 @@
 
 **Prerequisite:** Phase 0 已完成（[`phase0-foundation.md`](./2026-04-22-akamai-to-aws-longqi-phase0-foundation.md) Task 10 里程碑达成）。
 
+> **⚠ Phase 0 Delta（2026-04-22 review 后补充）**：Phase 0 Task 05 已经创建了 `cloudfront-functions` module 和 `viewer-request.js` 骨架版（内容：注入 `X-Viewer-Host` 解决 Host 透传）。Part 1 的 ch02/ch03 **不新建 module / 不新建 Function**，而是**扩展**既有 `viewer-request.js` 的逻辑；Distribution 已 attach 该 Function，无需重复 association。
+
 ---
 
 ## 文件结构（Part 1 完成后新增/修改）
@@ -27,14 +29,9 @@ Cloudfront/
 │       └── ua.js                ← 新增（UA 检测辅助，mock 侧不判 UA 跳转，跳转由 CF Function 负责）
 │
 ├── terraform/modules/
-│   ├── cloudfront-functions/     ← 新增 module
-│   │   ├── main.tf
-│   │   ├── variables.tf
-│   │   ├── outputs.tf
-│   │   └── src/
-│   │       ├── redirect-pc-m.js  ← ch02
-│   │       └── akacache-nce.js   ← ch03
-│   └── cloudfront-www/main.tf    ← 修改，把 Function attach 到 viewer-request
+│   └── cloudfront-functions/
+│       └── src/
+│           └── viewer-request.js  ← 扩展（Phase 0 骨架 + ch02 redirect + ch03 akaCache）
 │
 ├── hands-on/
 │   ├── 01-distribution-origin-split.md

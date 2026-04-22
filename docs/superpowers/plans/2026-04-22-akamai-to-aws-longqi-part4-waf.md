@@ -72,11 +72,76 @@ Cloudfront/
   | Match Target 按 sequence 匹配 | AWS 侧 CloudFront 直接 attach 到对应 Distribution，host 天然隔离 |
   | effectiveSecurityControls: App/Bot/Network/Rate/SlowPost 开 | ch09/10 会分别实现 |
 
-- [ ] **18.4 test-harness 用例（3 条非破坏性）**：
+- [ ] **18.4 AWS Managed Rule Groups（OWASP / Core Rule Set）（coverage E4 / C4）**：对齐 Akamai Security Config §4 `Application Layer Controls` ✅。在 `deny` 和 `api` 两个 Web ACL 各加以下 managed rule groups：
+
+  ```hcl
+  rule {
+    name     = "aws-common-crs"
+    priority = 5
+
+    override_action { none {} }
+
+    statement {
+      managed_rule_group_statement {
+        vendor_name = "AWS"
+        name        = "AWSManagedRulesCommonRuleSet"
+        # 按客户需求 selectively count vs block；POC 阶段保持 block（即 none 不 override）
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "aws-common-crs"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  rule {
+    name     = "aws-sqli"
+    priority = 6
+    override_action { none {} }
+    statement {
+      managed_rule_group_statement {
+        vendor_name = "AWS"
+        name        = "AWSManagedRulesSQLiRuleSet"
+      }
+    }
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "aws-sqli"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  rule {
+    name     = "aws-known-bad-inputs"
+    priority = 7
+    override_action { none {} }
+    statement {
+      managed_rule_group_statement {
+        vendor_name = "AWS"
+        name        = "AWSManagedRulesKnownBadInputsRuleSet"
+      }
+    }
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "aws-known-bad-inputs"
+      sampled_requests_enabled   = true
+    }
+  }
+  ```
+
+  **WCU 预算**：`CommonRuleSet` 700 + `SQLi` 200 + `KnownBadInputs` 200 = 1100 WCU base；Custom Rules + Rate + Bot 需要紧扣剩余预算。若超 1500 → 拆 ACL。具体选哪几个 Managed Rule Group 依据 spec §8.3 T8 的客户确认。
+
+- [ ] **18.5 test-harness 用例（4 条非破坏性 + 2 条破坏性）**：
   - `www` 普通请求返回 200（WAF 默认 Allow）
   - `api` 普通请求返回 200
-  - CloudWatch `AllowedRequests` metric > 0（用 `aws cloudwatch get-metric-statistics` 后处理）
-- [ ] **18.5 commit**：`ch08: waf framework docs + matrix + 3 non-destructive tests`
+  - CloudWatch `AllowedRequests` metric > 0
+  - `crs-block-sql-injection`：带明显 SQL injection payload 的请求被 block（用 `' OR 1=1--` in query）
+  - `crs-block-xss`：带 XSS payload 的请求被 block
+  - `known-bad-inputs-block`：带 `../../etc/passwd` 路径遍历被 block
+
+- [ ] **18.6 commit**：`ch08: waf framework + 3 managed rule groups (crs/sqli/kbi) + 6 tests`
 
 **验收信号**：3 个 Web ACL 都 `attached` 或记为"POC 未挂载"，hands-on 对照表清晰。
 
@@ -155,8 +220,23 @@ bypass test agent · Deny UA · Deny Client TLS Fingerprint 系列 · Monitor vc
   - id: cn-geo-allowed-but-others-logged
     description: "Geo 规则行为验证"
   ```
-- [ ] **19.6 hands-on + delivery md**：19 条 rule 逐条对照表 + 2 条迁移缺口（TLS fingerprint、Monitor 域名）标红
-- [ ] **19.7 commit**：`ch09: 19 custom rules + ASN 202425 translation, TLS-fingerprint gap flagged`
+- [ ] **19.6 WAF Labels → `X-WAF-Rules-Triggered` 回源头（coverage D9 / C6）**：对齐 Akamai essl §15 `SEO tuning` 的 `PMUSER_TRIGGERED_RULES = {{builtin.AK_FIREWALL_TRIGGERED_RULES}}` —— 把本次请求命中的 WAF 规则号透传到源站。
+
+  **实现路径**：
+  1. 每条 Custom Rule 在 `visibility_config` 里已有 `metric_name`；AWS WAF 自动打 label `awswaf:<metric-name>`。也可以在 rule 里显式 `rule_label { name = "bf-ruleset-asn-202425" }`。
+  2. CloudFront Function viewer-request **不能**读 WAF labels（labels 在 WAF evaluation 之后才产生）。需要改用 **Lambda@Edge origin-request** 或 **WAF custom response header**。
+  3. **方案（POC 可行）**：用 WAF 的 `custom_response { response_header_name = "X-WAF-Rules-Triggered" ... }`，在 rule action 是 count 或 block 时注入响应头；但这只作用于 block 响应，其他场景需要 AWS WAF 的 `CustomRequestHandling`。
+  4. **更简方案（推荐）**：定义一条 Custom Rule 组合 `rule_label` + 在 Count 动作下加 `custom_request_handling { insert_header { name = "X-WAF-Label-*" } }`，源站读这些 header 并组合成 `X-WAF-Rules-Triggered`（Node.js 侧处理）。
+
+  **本 task 在 plan 中只建结构**：
+  - 每条 Custom Rule 补 `rule_label { name = "bf:<rule-id>" }`
+  - 在 `deny` 和 `api` Web ACL 新增一条 priority=1 的 "label-propagation rule"：统一把所有 labels 转成 `X-BF-WAF-Labels` 请求头
+  - mock `beautyforever/server.js` 加 middleware：读 `X-BF-WAF-Labels`，暴露到 response header `X-WAF-Rules-Triggered`
+
+  delivery §9.4 说明"POC 实现的是 label-to-header 桥接，业务侧可按此 header 做 SEO 降级；和 Akamai `PMUSER_TRIGGERED_RULES` 等价"。spec §8.3 T9 确认业务侧消费方式。
+
+- [ ] **19.7 hands-on + delivery md**：19 条 rule 逐条对照表 + 2 条迁移缺口（TLS fingerprint、Monitor 域名）标红 + WAF Labels → `X-WAF-Rules-Triggered` 桥接说明
+- [ ] **19.8 commit**：`ch09: 19 custom rules + ASN 202425 + WAF labels bridged to X-WAF-Rules-Triggered + TLS-fingerprint gap`
 
 **验收信号**：
 - `terraform apply` 无 WCU 超限错误
@@ -251,11 +331,49 @@ bypass test agent · Deny UA · Deny Client TLS Fingerprint 系列 · Monitor vc
 
   对 rate test 需要扩展 probe.py 支持 `repeat: N` 和 `delay_ms: X` 字段。
 
-- [ ] **20.6 hands-on + delivery md**：
+- [ ] **20.6 `breakConnection` 处理（coverage F2 / I5）**：对齐 Akamai api v10 §10 `breakConnection: enabled=true`（"Simulate failover"分支）。
+
+  **本 task 的动作**：
+  1. 向客户确认（spec §8.3 T10）—— 是演练残留还是生产上刻意保留？
+  2. **若保留**：AWS 无原生等价；用 AWS WAF custom rule + 条件表达式模拟（命中条件时返回特定 status code，使 CloudFront 视为 origin 故障）：
+
+     ```hcl
+     rule {
+       name     = "simulate-failover-${each.key}"
+       priority = 200
+       action {
+         block {
+           custom_response {
+             response_code = 503
+             custom_response_body_key = "failover-simulation"
+           }
+         }
+       }
+       statement {
+         # TODO: fill in the Akamai breakConnection's original condition
+         # (from raw JSON's Increase availability / breakConnection criteria)
+         byte_match_statement {
+           positional_constraint = "EXACTLY"
+           search_string         = "true"
+           field_to_match { single_header { name = "x-simulate-failover" } }
+           text_transformation { priority = 0 type = "NONE" }
+         }
+       }
+       visibility_config { ... }
+     }
+     ```
+
+  3. **若不保留（推荐）**：在 delivery §10.4 明示 "迁移时主动删除故障注入 —— Akamai 生产上开着 `breakConnection` 大概率是演练残留"，并建议客户确认。
+
+  **默认决策**：POC 阶段不实现，delivery 明示客户确认项；客户选保留后再补。
+
+- [ ] **20.7 hands-on + delivery md**：
   - Akamai rate policy → AWS WAF rate-based rule 的换算表
   - Bot Manager → Bot Control 非精确映射声明
   - Slow POST partial equivalence 说明
-- [ ] **20.7 commit**：`ch10: 5 rate rules + slow-post partial + bot control common + destructive tests`
+  - `breakConnection` 去留说明 + 客户确认项
+
+- [ ] **20.8 commit**：`ch10: 5 rate rules + slow-post partial + bot control common + breakConnection confirm placeholder + destructive tests`
 
 **验收信号**：
 - 连打 150 次 `/*.html` 触发 rate block（HTTP 403）

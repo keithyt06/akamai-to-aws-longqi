@@ -72,23 +72,52 @@ Cloudfront/
 
 - [ ] **14.1 建 `cache-policies` module**：为每个 path pattern 创建 `aws_cloudfront_cache_policy`，`min_ttl/default_ttl/max_ttl` 按上表。**先不带 cookie/query**（ch05/06 会扩）。
 - [ ] **14.2 修 `cloudfront-www/main.tf`**：追加 6 条 `ordered_cache_behavior`，`path_pattern` 按顺序从精确到通配。`target_origin_id = "alb-origin"`，`cache_policy_id` 引用对应 policy，`viewer_protocol_policy = "redirect-to-https"`，attach viewer-request Function。
-- [ ] **14.3 修 `cloudfront-api/main.tf`**：api 保持 default no-cache，不新增 behavior。
-- [ ] **14.4 修 beautyforever mock**：为不同路径输出不同 `Cache-Control`（双头策略：`s-maxage` 给 edge、`max-age=0` 给浏览器）：
+- [ ] **14.3 修 `cloudfront-api/main.tf` —— api 扩展名分桶（coverage B3 / I8）**：对齐 Akamai api v10 §6 扩展名分桶，api Distribution 也加 ordered_cache_behavior：
+
+  | path_pattern | TTL | Akamai 依据 |
+  |---|---|---|
+  | `*.css` / `*.js` | 365d | api §6 CSS and JavaScript |
+  | `*.woff` / `*.woff2` / `*.otf` / `*.ttf` / `*.eot` | 365d | api §6 Fonts |
+  | `*.jpg` / `*.jpeg` / `*.png` / `*.gif` / `*.webp` / `*.svg` | 30d | api §6 Images（注意：api 侧 30d，不是 www 的 365d）|
+  | `*.pdf` / `*.doc` / `*.docx` / `*.odt` | 7d | api §6 Files |
+  | `*.html` / `*.htm` | 1d | api §6 HTML pages（默认仍 NO_STORE） |
+
+  api Distribution 的 `default_cache_behavior` 继续 `Managed-CachingDisabled`（对齐 NO_STORE）。
+
+- [ ] **14.4 修 beautyforever mock —— 含 stale-while-revalidate + stale-if-error**（coverage B4 / C3、B5 / I1）：
+
   ```javascript
   // example in www.js
   router.get('/', (_req, res) => {
-    res.setHeader('Cache-Control', 's-maxage=21600, max-age=0');  // 6h edge, 0 viewer
+    // s-maxage=6h 给 edge；max-age=0 给浏览器；
+    // stale-while-revalidate=10% 对齐 Akamai prefreshCache=90%（剩余 10% 开始后台预热）；
+    // stale-if-error=60 对齐 Akamai cacheError preserveStale=true（源站 5xx 时继续返回 stale）
+    res.setHeader('Cache-Control', 's-maxage=21600, stale-while-revalidate=2160, stale-if-error=60, max-age=0');
     res.type('text/html').send(...);
   });
   router.get('/blog', (_req, res) => {
-    res.setHeader('Cache-Control', 's-maxage=31536000, max-age=0');
+    res.setHeader('Cache-Control', 's-maxage=31536000, stale-while-revalidate=86400, stale-if-error=60, max-age=0');
     res.type('text/html').send(...);
   });
   ```
-- [ ] **14.5 `terraform apply` + smoke**：curl 连打 2 次 `https://www.../blog`，第二次应 `X-Cache: Hit from cloudfront`。
-- [ ] **14.6 test-harness 用例**：10 条（每个 path pattern 2 条：第一次 MISS、第二次 HIT；以及 `/` 首次/二次、`/blog` 首次/二次、`/static/foo` 首次/二次、`/x.css` 首次/二次、`/activity-spring.html` 首次/二次）。
-- [ ] **14.7 hands-on md + delivery md**：用 TTL 矩阵对照表 + Akamai path 截图 + AWS Console 路径对齐。
-- [ ] **14.8 commit**：`ch04: 6 cache behaviors + ttl matrix + cache-control double-header + 10 tests`
+
+  **换算策略**：`stale-while-revalidate = s-maxage × 10%`（对齐 prefreshCache=90%）；`stale-if-error = 60`（对齐 Akamai cacheError ttl=10s 略放宽）。
+
+- [ ] **14.5 Custom Error Responses（coverage B5 / I1 配套）**：`cloudfront-www` 和 `cloudfront-api` 各自加 `custom_error_response` 块，5xx 短缓存：
+
+  ```hcl
+  custom_error_response { error_code = 502  error_caching_min_ttl = 10 }
+  custom_error_response { error_code = 503  error_caching_min_ttl = 10 }
+  custom_error_response { error_code = 504  error_caching_min_ttl = 10 }
+  ```
+
+- [ ] **14.6 `terraform apply` + smoke**：curl 连打 2 次 `https://www.../blog`，第二次应 `X-Cache: Hit from cloudfront`。手工验证 `Cache-Control` 响应头含 `stale-while-revalidate` 和 `stale-if-error`。
+- [ ] **14.7 test-harness 用例（扩展到 13 条）**：原 10 条 MISS/HIT 矩阵 + 3 条新增：
+  - `stale-while-revalidate-present`：HEAD 响应含 `stale-while-revalidate=`
+  - `stale-if-error-present`：HEAD 响应含 `stale-if-error=`
+  - `api-css-cached-365d`：api.*.css 响应 `Cache-Control` 含 `max-age=31536000`
+- [ ] **14.8 hands-on md + delivery md**：TTL 矩阵对照表 + Akamai `prefreshCache→SWR` 换算表 + `cacheError→Custom Error Response` 对照 + api 扩展名分桶表。delivery §4.3 trade-off："AWS 无精确等价 prefreshCache 90%，用 `stale-while-revalidate=10%×TTL` 近似；精度差异 < 1 分钟"。
+- [ ] **14.9 commit**：`ch04: 6 cache behaviors + ttl matrix + swr + sie + api ext buckets + 13 tests`
 
 **验收信号**：
 - `terraform validate + plan + apply` 无错
@@ -137,8 +166,32 @@ srsltid, brid, afsrc
     ...
   # 等等
   ```
-- [ ] **15.4 hands-on + delivery md**：对照表 "Akamai `EXCLUDE_QUERY_PARAMS 34 项`" vs "CloudFront CachePolicy QueryString allExcept + Function 白名单"
-- [ ] **15.5 commit**：`ch05: query normalize - 34 excludes + utm whitelist for www/m, 20 ignore for api + 8 tests`
+- [ ] **15.4 `/static/*` 特殊 token 分版本（coverage B14 / N1）**：对齐 Akamai essl §7 `optional=true` token `LT1RVf0XvMD1A78LUGJ2JvcSkHTKq8vb` —— 带此 token 的 `/static/*` 请求按 token 值拆 cache 版本，不带则用默认 cache key：
+
+  ```javascript
+  // in viewer-request.js
+  var STATIC_VERSION_TOKEN = 'LT1RVf0XvMD1A78LUGJ2JvcSkHTKq8vb';
+
+  if (req.uri.indexOf('/static/') === 0) {
+    var tokenVal = qsobj[STATIC_VERSION_TOKEN];
+    if (tokenVal) {
+      // Write the token presence into a cache-key dimension
+      req.headers['x-static-ver'] = { value: tokenVal.value };
+    }
+  }
+  ```
+
+  对应 `/static/*` 路径的 CachePolicy headers_config 加入 `x-static-ver` 作为 cache key 维度。
+
+  **test case**：
+  ```yaml
+  - id: static-with-token-separate-key
+    description: "/static/foo.bin 带特殊 token 和不带，是不同 cache key"
+    ...
+  ```
+
+- [ ] **15.5 hands-on + delivery md**：对照表 "Akamai `EXCLUDE_QUERY_PARAMS 34 项`" vs "CloudFront CachePolicy QueryString allExcept + Function 白名单" + `/static/` token 特殊处理说明
+- [ ] **15.6 commit**：`ch05: query normalize - 34 excludes + utm whitelist + /static token versioning + 9 tests`
 
 **验收信号**：
 - `curl 'https://www.beautyforever.keithyu.cloud/abc.html?fbclid=xyz'` 两次请求第二次 HIT

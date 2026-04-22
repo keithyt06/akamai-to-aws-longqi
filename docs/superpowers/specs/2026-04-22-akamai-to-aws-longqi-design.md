@@ -396,7 +396,7 @@ test-harness/report/out/
 | R7 | **一个月时间盒内 12 章全做完压力大** | 优先级分级：P0 = 必须（ch01-10）、P1 = 强烈推荐（ch11-12）、极端情况 P1 可延后 |
 | R8 | **客户 DataStream 日志拿不到样本** | ch09/10 破坏性场景改用 rule tree 配置字段 + CloudFront 侧实测印证 |
 
-### 8.2 Phase 0 启动前待决的未决项
+### 8.2 Phase 0 启动前待决的未决项（基础设施层）
 
 | # | 未决项 | 决策期望 |
 |---|---|---|
@@ -406,6 +406,25 @@ test-harness/report/out/
 | U4 | 对比测试 baseline 打生产的频率 / 窗口（默认 ≤ 10 req/hour，00:00-06:00 CST） | Phase 0 Day 2 |
 | U5 | tfstate S3 bucket 名 | Phase 0 Day 1 |
 | U6 | `keithyu.cloud` hosted zone 是否已在 AWS Route53（还是 Cloudflare/其他） | Phase 0 Day 1 |
+
+### 8.3 技术层待细化 / 客户需确认项
+
+以下项在 2026-04-22 交叉 review 中发现（详见 [`coverage-matrix.md`](./coverage-matrix.md) 🔴 Todo 项），各 plan 已同步补 task：
+
+| # | 技术点 | Akamai 依据 | 需客户确认什么 | 归属 plan |
+|---|---|---|---|---|
+| T1 | **Host 透传方案**：CloudFront 不允许透传 viewer Host → ALB | essl §3、api §3 `forwardHostHeader=REQUEST_HOST_HEADER` | 确认我们用"Function 注入 `x-viewer-host`，ALB listener rule 按该 header 分流"的方案 OK | phase0 T05 |
+| T2 | **Origin Shield 区域选择** | essl §6、api §6 `tieredDistribution=true` | 选 `ap-northeast-1`（默认同主区）或客户指定 | phase0 T05 |
+| T3 | **`stale-while-revalidate` / `stale-if-error` 值** | essl §6、api §6 `prefreshCache=90%` + `cacheError ttl=10s` | 确认 SWR window 和 SIE window 具体秒数 | part2 T14 |
+| T4 | **api 扩展名分桶 TTL** | api §6 | 确认 CSS/JS/字体 365d、图片 30d、Files 7d 等是否直接照搬 | part2 T14 |
+| T5 | **`/static/*` 特殊 token** `LT1RVf0XvMD1A78LUGJ2JvcSkHTKq8vb` | essl §7 | 确认该 token 是否仍在使用、迁移后是否保留 | part2 T15 |
+| T6 | **Js tag 注入的具体 JS 内容** | essl §11 | 待客户提供 JS 源码后才能在 CloudFront Function viewer-response 实现 | part3 T17 |
+| T7 | **`modifyOutgoingRequestHeader`** 具体 header 名和值 | essl §17、api §14 | 需读 raw JSON 或问运维 | part3 T17 |
+| T8 | **OWASP Managed Rule Group 选哪些** | waf §4 Application ✅ | `AWSManagedRulesCommonRuleSet` 必选；SQLi / KnownBadInputs / LinuxRuleSet 可选 | part4 T18 |
+| T9 | **AWS WAF Labels → `X-WAF-Rules-Triggered`** 方案 | essl §15 `PMUSER_TRIGGERED_RULES` | 确认业务侧消费此 header 的方式 | part4 T19 |
+| T10 | **`breakConnection: enabled=true`（api）** 是否保留 | api §10 | 客户确认是演练残留还是刻意保留 | part4 T20 |
+| T11 | **Adaptive Acceleration / SureRoute / IVM** 迁移缺口如何交代 | essl §6/§8/§13 | 客户选"无损替代"或"接受缺口"；deliver 以客户选择为准 | wrapup Known Gaps |
+| T12 | **HSTS preload 不可逆** | essl §0 note | 客户确认接受不可逆再 apply | part3 T17 |
 
 ---
 
@@ -424,6 +443,10 @@ test-harness/report/out/
 | 域名维度：api | [`Akamai/doc/32-domain-api-beautyforever-com.md`](../../../Akamai/doc/32-domain-api-beautyforever-com.md) |
 | 运维交叉比对 | [`Akamai/doc/40-ops-verification.md`](../../../Akamai/doc/40-ops-verification.md) |
 | 动静态分析 | [`Akamai/doc/90-dynamic-static-analysis.md`](../../../Akamai/doc/90-dynamic-static-analysis.md) |
+
+### 9.1 Akamai → CloudFront 行为对照矩阵
+
+**[`coverage-matrix.md`](./coverage-matrix.md)** — 66 条行为逐条对照，持续演化的"真相源"。任何 spec / plan 改动后必须同步。
 
 ---
 

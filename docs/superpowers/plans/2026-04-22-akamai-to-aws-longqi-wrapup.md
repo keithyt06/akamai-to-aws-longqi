@@ -201,13 +201,39 @@ scripts/
 | 对比测试框架 | `Cloudfront/test-harness/` |
 | Git Tag | `v1.0.0` |
 
-## 已知迁移缺口（写入 delivery / README）
+## 已知迁移缺口（写入 delivery / README / coverage-matrix）
 
+**按类型汇总（全部来自 `docs/superpowers/specs/coverage-matrix.md` 🟡 状态项）**：
+
+### 协议 / 网络能力
 1. **HTTP/3**：为 CloudFront CICD 放弃（trade-off，客户可选是否接受）
-2. **TLS Fingerprint 规则**：AWS WAF 不原生支持 JA3/JA4
-3. **Akamai Bot Manager** → AWS Bot Control：非 1:1 映射，AWS 是 "Common" 或 "Targeted" 等级
-4. **Akamai Advanced XML metadata**（essl §18）：未解析，迁移前人工审阅
-5. **Rate Policy 窗口**：Akamai rpm vs AWS 5-min sliding，数值需换算
+2. **Akamai `SureRoute PERFORMANCE`**：AWS 无精确等价；Origin Shield + Tiered Cache 部分替代；动态路径优化能力有损失
+3. **Akamai `Adaptive Acceleration`**（MPulse 驱动 Push/Preconnect/Preload）：AWS 无原生等价；客户可用应用层 `<link rel="preconnect">` 等补偿
+
+### WAF / 安全
+4. **TLS Fingerprint 规则**（Client TLS Fingerprint 系列 Custom Rules）：AWS WAF 不原生支持 JA3/JA4
+5. **Akamai Bot Manager** → AWS Bot Control：非 1:1 映射，AWS 是 `Common` / `Targeted` 等级
+6. **Slow POST**：AWS 无原生等价；`size_constraint_statement` + CloudFront 超时 partial equivalence
+7. **Rate Policy 窗口**：Akamai rpm vs AWS 5-min sliding，数值按 "Akamai rpm × 5" 换算
+
+### 精度 / 缓存
+8. **`prefreshCache = 90%`** → `stale-while-revalidate = 10%×TTL` 近似（精度差异 < 1 分钟）
+9. **`cacheError ttl=10s preserveStale=true`** → `stale-if-error=60` + Custom Error Response min-TTL=10 近似
+10. **Mobile UA 检测**：Akamai `deviceCharacteristic[IS_MOBILE]` 用内部设备库；CloudFront Function 用 UA 正则——边角 UA 可能分歧
+
+### 图像 / 前端辅助
+11. **`Image and Video Manager (IVM)`**：AWS 无原生图像处理；可用 CloudFront + Lambda@Edge 或 CloudFront Image Optimizer（2024）补
+12. **`Augment insights` / mPulse**：AWS 可选 CloudWatch RUM 替代；客户自决
+
+### 黑盒 / 待人工审阅
+13. **Akamai `Advanced` XML metadata**（essl §18）：未解析，迁移前人工审阅
+14. **`Js tag` 注入**（essl §11）：POC 用 placeholder；客户提供真实 JS 源码后再上
+15. **`modifyOutgoingRequestHeader`** 具体回源头列表：POC 只建结构；具体 header 待客户补齐（spec §8.3 T7）
+
+### 客户决策项
+16. **HSTS preload 不可逆**：客户确认接受再 apply
+17. **`breakConnection: enabled=true`（api）** 故障注入：客户确认保留还是删除
+18. **Origin Shield 区域选择**：默认 `ap-northeast-1` 主区；客户可指定
 
 ## 下一步（客户侧）
 

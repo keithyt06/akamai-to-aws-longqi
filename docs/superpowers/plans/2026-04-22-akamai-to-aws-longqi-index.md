@@ -10,6 +10,8 @@
 
 **Source spec:** [`../specs/2026-04-22-akamai-to-aws-longqi-design.md`](../specs/2026-04-22-akamai-to-aws-longqi-design.md)
 
+**Akamai → CloudFront 行为对照矩阵:** [`../specs/coverage-matrix.md`](../specs/coverage-matrix.md) — 66 条行为逐条对照，持续演化的"真相源"；每次改 spec / plan 都同步更新。
+
 ---
 
 ## Plan 清单
