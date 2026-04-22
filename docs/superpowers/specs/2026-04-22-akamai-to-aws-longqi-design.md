@@ -436,7 +436,7 @@ test-harness/report/out/
 | G2 | SureRoute PERFORMANCE | ✅ **不做**：北美客户群 CloudFront 能扛住 |
 | G3 | Adaptive Acceleration | ✅ **不做**：AA 和 WAF 无关；前端可用 `<link rel="preconnect">` 补偿 |
 | G4 | Image and Video Manager | ✅ **不需要**：API 是静态 JSON |
-| G5 | TLS Fingerprint 规则 | 🟡 **POC 不加**；客户问 "WAF SDK 是否覆盖" — 答案是 Bot Control Targeted（G6 已启用）内置设备指纹机制，是 TLS 指纹的超集替代 |
+| G5 | TLS Fingerprint 规则 | ✅ **用 Bot Control Targeted 覆盖**（客户 2026-04-22 round-3 确认）：AWS WAF SDK + 服务端 ML 模型识别能力是 TLS JA3/JA4 的超集；已在 G6 按 path 对敏感 API 启用 |
 | G6 | Bot Manager → Bot Control | ✅ **按 path 同时演示 `Common` + `Targeted` 两档** |
 | G7 | Slow POST Protection | ✅ **用 Rate-Based Rule 替代**：POST 3/5 rpm + CloudFront read timeout 30s + ALB idle timeout 60s 共同覆盖 |
 

@@ -212,7 +212,7 @@ scripts/
 4. ✅ **Origin Shield**（客户 T2 2026-04-22 决定不开）：默认 `origin_shield_enabled = false`；北美客户群 CloudFront Edge 直连足够
 
 ### WAF / 安全
-5. 🟡 **TLS Fingerprint 规则**（客户 G5 2026-04-22 暂不加，待 Keith 澄清 "WAF SDK 方案"）：AWS WAF 不原生支持 JA3/JA4；但 **Bot Control Targeted**（G6 已启用）内置设备指纹机制，是更强替代
+5. ✅ **TLS Fingerprint 规则**（客户 G5 2026-04-22 round-3 确认）：**用 Bot Control Targeted 覆盖**（G6 已启用）——AWS WAF SDK + ML 模型收集几十维度浏览器指纹（canvas/WebGL/screen/fonts 等），是 TLS JA3/JA4 单维指纹的超集替代
 6. ✅ **Akamai Bot Manager → AWS Bot Control**（客户 G6）：按 path 同时演示 Common（公开页）+ Targeted（敏感 API 路径）两档
 7. ✅ **Slow POST**（客户 G7 2026-04-22）：不做原生等价；用 Rate-Based Rule（POST 3/5 rpm）+ CloudFront Origin read timeout 30s + ALB idle timeout 60s 共同覆盖威胁面
 8. **Rate Policy 窗口**：Akamai rpm vs AWS 5-min sliding，换算 `Akamai rpm × 5`（delivery §10 自动处理）

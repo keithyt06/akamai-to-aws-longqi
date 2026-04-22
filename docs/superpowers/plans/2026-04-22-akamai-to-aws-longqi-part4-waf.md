@@ -262,7 +262,7 @@ bypass test agent · Deny UA · Deny Client TLS Fingerprint 系列 · Monitor vc
 
 - [ ] **19.3 处理其他 18 条**：每条按以下模板翻译：
   - **Deny UA**: `byte_match_statement` on `single_header { name = "user-agent" }`
-  - **Deny TLS Fingerprint**: AWS WAF 不原生支持 JA3/JA4 fingerprint → **标记为 unsupported**，在 delivery §9.3 明示 "迁移缺口"
+  - **Deny TLS Fingerprint**: AWS WAF 不原生支持 JA3/JA4 → **由 G6 Bot Control Targeted 覆盖**（客户 2026-04-22 round-3 确认）：敏感 API 路径已启用 Targeted 档，通过 WAF SDK + ML 模型收集几十维度浏览器指纹（超集替代）。delivery §9.3 说明"TLS JA3/JA4 → Bot Control Targeted 跨层替代"
   - **GeoDeny**: `geo_match_statement { country_codes = [...] }`
   - **deny referer**: `byte_match_statement` on `single_header { name = "referer" }`
   - **Monitor vcdn.nadula.com**: 不在本项目 host 范围，标记为"不适用本 POC"

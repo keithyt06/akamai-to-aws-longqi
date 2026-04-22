@@ -95,7 +95,7 @@
 | E8 | Slow POST Protection | waf §4 | AWS 无原生；**客户 G7 决策**：用 Rate-Based Rule（POST 3/5 rpm，已在 5 条 Rate）+ CloudFront read timeout 30s + ALB idle timeout 60s 共同覆盖 | ✅ replaced by rate+timeout (customer G7 2026-04-22) | part4 T20 |
 | E9 | Account Protection / URL Protection | waf §4（两者均关）| 不需要迁移 | ➖ | N/A |
 | E10 | 19 Custom Rules (含 bypass/deny UA/TLS fingerprint/Monitor/GeoDeny/ASN) | ops §6.3 | Custom Rule 翻译 | ✅ | part4 T19 |
-| E11 | **TLS Fingerprint 系列（Client TLS Fingerprint）** | ops §6.3 | AWS WAF 不原生支持 JA3/JA4；**Bot Control Targeted（G6 已启用）内置设备指纹机制**，是超集替代 | 🟡 (customer G5 2026-04-22: POC 不加；待 Keith 确认"WAF SDK 方案"后客户再定) | part4 T19 |
+| E11 | **TLS Fingerprint 系列（Client TLS Fingerprint）** | ops §6.3 | **Bot Control Targeted（G6 已启用）覆盖**：AWS WAF SDK + ML 模型，收集 canvas/WebGL/screen/timezone/fonts 等几十维度，是 TLS JA3/JA4 单维指纹的超集 | ✅ replaced by Bot Control Targeted (customer G5 2026-04-22 round-3) | part4 T19 |
 | E12 | Custom Rule 60383229（ASN 202425 + host=www）| waf §1 | 同等 Custom Rule with AND statements | ✅ | part4 T19 |
 | E13 | Bypass Network List 146351（elementCount=0，空）| waf §3 | **不迁移** | ✅ spec §1.2 明示 | N/A |
 
@@ -132,15 +132,15 @@
 
 ---
 
-## 统计（2026-04-22 客户两轮回复后更新）
+## 统计（2026-04-22 客户三轮回复后 LOCKED）
 
-| 状态 | 初版 review | 第 1 轮回复 | 第 2 轮回复 |
-|---|---|---|---|
-| ✅ Done | 38 | 50 | **57** |
-| 🟡 Gap-declared（含未完全解释的项）| 10 | 11 | **4** |
-| 🔴 Todo | 13 | 0 | 0 |
-| ➖ N/A | 5 | 5 | 5 |
-| **合计** | **66** | **66** | **66** |
+| 状态 | 初版 review | 第 1 轮 | 第 2 轮 | **第 3 轮（终版）** |
+|---|---|---|---|---|
+| ✅ Done | 38 | 50 | 57 | **58** |
+| 🟡 Gap-declared（基线迁移缺口）| 10 | 11 | 4 | **3** |
+| 🔴 Todo | 13 | 0 | 0 | **0** |
+| ➖ N/A | 5 | 5 | 5 | **5** |
+| **合计** | **66** | **66** | **66** | **66** |
 
 ## 客户 2026-04-22 第 2 轮回复确认项（9 条新 ✅）
 
@@ -156,9 +156,7 @@
 
 ## 仍待 Keith 澄清后客户可能改变决定（🟡）
 
-| # | 项 | 状态 |
-|---|---|---|
-| E11 / G5 | TLS Fingerprint 规则 | 客户 POC 暂不加；**待 Keith 澄清"WAF SDK"含义**（实际上 Bot Control Targeted 内置设备指纹机制） |
+*（本节已清空 —— 2026-04-22 round-3 客户确认 G5 通过 Bot Control Targeted 覆盖后，所有需客户二次决策的项已全部敲定）*
 
 ## 其他保持 🟡 的项（基线迁移缺口，不需客户决定）
 
