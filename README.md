@@ -21,8 +21,17 @@ akamai-to-aws-longqi/
 │
 ├── docs/superpowers/
 │   ├── specs/
-│   │   └── 2026-04-22-akamai-to-aws-longqi-design.md   ← 🎯 总体设计 spec
-│   └── plans/                      ← 实施计划（待 writing-plans 产出）
+│   │   ├── 2026-04-22-akamai-to-aws-longqi-design.md   ← 🎯 总体设计 spec
+│   │   └── coverage-matrix.md                           ← 🎯 Akamai↔CloudFront 行为对照（69 项）
+│   └── plans/                                           ← 实施计划（已产出 8 份）
+│       ├── ...-index.md                                 ← plan 索引
+│       ├── ...-phase0-foundation.md                     ← Phase 0 基建（完整详细）
+│       ├── ...-part1-entry.md                           ← Part 1 ch01-03（完整详细）
+│       ├── ...-part2-cache.md                           ← Part 2 ch04-06 skeleton
+│       ├── ...-part3-response.md                        ← Part 3 ch07 skeleton
+│       ├── ...-part4-waf.md                             ← Part 4 ch08-10 skeleton
+│       ├── ...-part5-observability-cd.md                ← Part 5 ch11-12 skeleton
+│       └── ...-wrapup.md                                ← 收尾 skeleton
 │
 ├── Akamai/                         ← ✅ 现状调研已完成
 │   ├── doc/    11 份结构化分析
@@ -40,6 +49,8 @@ akamai-to-aws-longqi/
 ## 快速索引
 
 - 设计文档：[`docs/superpowers/specs/2026-04-22-akamai-to-aws-longqi-design.md`](./docs/superpowers/specs/2026-04-22-akamai-to-aws-longqi-design.md)
+- **行为对照矩阵**（Akamai→CloudFront 69 项真相源）：[`docs/superpowers/specs/coverage-matrix.md`](./docs/superpowers/specs/coverage-matrix.md)
+- Plan 索引：[`docs/superpowers/plans/2026-04-22-akamai-to-aws-longqi-index.md`](./docs/superpowers/plans/2026-04-22-akamai-to-aws-longqi-index.md)
 - Akamai 现状：[`Akamai/doc/README.md`](./Akamai/doc/README.md)
 - 动静态分析：[`Akamai/doc/90-dynamic-static-analysis.md`](./Akamai/doc/90-dynamic-static-analysis.md)
 - 运维交叉比对：[`Akamai/doc/40-ops-verification.md`](./Akamai/doc/40-ops-verification.md)
@@ -58,17 +69,19 @@ akamai-to-aws-longqi/
 | 3 Response | 07 | Headers + HSTS + True-Client-IP + XFF Bug 修复 |
 | 4 WAF | 08 | WAF 框架：Match Targets + 3 Policy |
 |  | 09 | Custom Rules + ASN 202425 |
-|  | 10 | Rate Policy + Slow POST + Bot Manager |
+|  | 10 | Rate Policy + Bot Control (Common + Targeted 两档 by path) |
 | 5 可观测 + 红利 | 11 | Real-time Logs → Kinesis → Python → Doris |
 |  | 12 | Tag-Based Invalidation + Continuous Deployment |
 
 ## 项目状态
 
 - [x] Phase -1：Akamai 现状调研（`Akamai/` 已完成，2026-04-21）
-- [x] Phase 0：总体设计 spec（本文件 + `docs/superpowers/specs/...`）
-- [ ] Phase 0：基础设施骨架（Wk1）
+- [x] Phase 0 设计：总体 spec + coverage-matrix（66→69 项，2026-04-22）
+- [x] Phase 0 设计：8 份 plan 产出（phase0 + 5 parts + wrapup + index）
+- [x] Phase 0 设计：客户 4 轮决策全部 locked（Done: 61 / Gap-declared: 3 / Todo: 0）
+- [ ] Phase 0 执行：基础设施骨架（Wk1）← **下一步**
 - [ ] Phase 1-N：12 章节按并行度推进（Wk2-Wk4）
-- [ ] 收尾与评审（Wk5）
+- [ ] 收尾与评审（Wk5，交付 2026-05-22）
 
 ## 使用的工具链
 

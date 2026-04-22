@@ -38,7 +38,7 @@
 
 - 测试脚本 (`Cloudfront/test-harness/baseline/`) 在代码层 assert HTTP method ∈ {GET, HEAD}
 - baseline 请求 User-Agent 固定为 `Keithyu-Akamai-Baseline/1.0 (read-only)` 便于客户 SRE 在 DataStream 中识别
-- baseline 对客户生产域名限速 ≤ 10 req/hour，仅在夜间窗口（00:00-06:00 CST）运行
+- **baseline 是一次性测试（customer 2026-04-22 U4）**：POC 部署完成后跑一次对比，不是 recurring 任务。因此不强制 hourly 限速 / 时间窗口；只保留 method + host + UA 三条硬栅栏
 - 任何 PR 修改涉及 Akamai 调用都必须通过 code review
 
 ## Incident Response

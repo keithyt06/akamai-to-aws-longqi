@@ -26,13 +26,27 @@ CloudFront Continuous Deployment requires `HttpVersion = http2`. Since Chapter 1
 
 Customer's current stack: CloudFront Real-time Logs → Kinesis Data Stream → Python consumer → **Doris single-node on EC2**. Chapter 11 follows this architecture exactly — do not substitute with S3 + Athena or OpenSearch unless the customer explicitly asks.
 
-### 5. Origin is a single EC2
+### 5. Origin is a single EC2 with X-Viewer-Host dispatch
 
-Phase 0 stands up **one** EC2 instance (not three). A single Node.js process listens on three ports (or uses Host-based virtual hosts); one ALB with three Host-based listener rules routes `www / m / api.beautyforever.keithyu.cloud` to that EC2. The point is cheap demo, not production fidelity.
+Phase 0 stands up **one** EC2 instance (customer-confirmed 2026-04-22 U2: `t3.xlarge`), running a single Node.js process on port 8080. The ALB has **3 listener rules matching the `X-Viewer-Host` custom header** (NOT the Host header — CloudFront does not forward viewer's original Host), each rule routes to the same target group. A CloudFront Function (viewer-request) injects `X-Viewer-Host` from the original Host on every request.
 
-### 6. Verification is one-sided
+### 5a. Two CloudFront Distributions, not three
+
+Customer-confirmed 2026-04-22 round-4: `www + m` share ONE Distribution (aliases array), `api` is independent. Total = **2 Distributions** matching Akamai's essl property architecture. Do not split www / m into separate Distributions.
+
+### 5b. Origin Shield OFF by default
+
+Customer-confirmed 2026-04-22 T2: `origin_shield_enabled = false`. North America audience, CloudFront Edge absorbs load directly. Terraform variable preserved for future one-flag enablement.
+
+### 5c. HSTS preload OFF; max-age 2y + includeSubDomains ON
+
+Customer-confirmed 2026-04-22 T12: match Akamai production v62 behavior — preload is NOT enabled (irreversible browser list submission). Keep `max-age=63072000 + includeSubDomains` for baseline HSTS.
+
+### 6. Verification is one-sided (one-shot baseline)
 
 Akamai side: baseline only (read GET, no writes). CloudFront side: full testing including destructive scenarios (rate limit / WAF block / Bot). "Equivalence" is proven by: (Akamai rule tree + customer DataStream samples) vs (CloudFront live test matrix). Do **not** send destructive traffic to the customer's Akamai production.
+
+Customer-confirmed 2026-04-22 U4: baseline is **one-shot** after deployment (for spec-vs-prod comparison), not a recurring job. No hourly/window limits beyond the hard READ-ONLY + fixed UA guards.
 
 ## Implementation Priorities
 

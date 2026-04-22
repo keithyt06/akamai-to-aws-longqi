@@ -4,7 +4,8 @@
 
 ## 核心原则
 
-- **Akamai 侧只读**：`baseline/probe.py` 启动时 assert `method in {"GET", "HEAD"}`，硬编码 User-Agent `Keithyu-Akamai-Baseline/1.0 (read-only)`，限速 ≤ 10 req/hour，运行窗口 00:00-06:00 CST
+- **Akamai 侧只读**：`baseline/probe.py` 启动时 assert `method in {"GET", "HEAD"}`，hostname 白名单只允许 3 个客户生产域名，硬编码 User-Agent `Keithyu-Akamai-Baseline/1.0 (read-only)`
+- **baseline 是一次性测试**（customer 2026-04-22 U4）：POC 部署完成后跑一次做方案验证，不 recurring；只保留 method + host + UA 三条硬栅栏，不再限速/限时间窗口
 - **CloudFront 侧全场景**：`probe/probe.py` 允许破坏性用例（rate limit / WAF block / Bot）
 - **YAML 驱动**：每章一个 YAML，人读可审；新增用例不改代码
 - **离线可跑**：产出是 JSON + HTML，不依赖运行时服务
@@ -28,8 +29,8 @@ test-harness/
 │   └── 12-tag-cd.yaml
 │
 ├── baseline/                       # Akamai 只读
-│   ├── probe.py                    # 核心：硬编码 GET-only + 限速 + UA
-│   ├── guards.py                   # 硬栅栏：method / host / window
+│   ├── probe.py                    # 核心：硬编码 GET-only + 固定 UA
+│   ├── guards.py                   # 硬栅栏：method / host / UA (one-shot, no window)
 │   └── artifacts/YYYY-MM-DD/       # .gitignore 排除
 │       └── NN-<chapter>.json
 │

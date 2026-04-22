@@ -33,6 +33,6 @@ NN-<topic>.md
 - [ ] 07 Headers + HSTS + True-Client-IP + XFF 修复
 - [ ] 08 WAF 框架：Match Targets + 3 Policy
 - [ ] 09 Custom Rules + ASN 202425
-- [ ] 10 Rate Policy + Slow POST + Bot Manager
+- [ ] 10 Rate Policy + Bot Control (Common + Targeted by path)
 - [ ] 11 Real-time Logs → Kinesis → Python → Doris
 - [ ] 12 Tag-Based Invalidation + Continuous Deployment
