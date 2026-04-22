@@ -396,35 +396,49 @@ test-harness/report/out/
 | R7 | **一个月时间盒内 12 章全做完压力大** | 优先级分级：P0 = 必须（ch01-10）、P1 = 强烈推荐（ch11-12）、极端情况 P1 可延后 |
 | R8 | **客户 DataStream 日志拿不到样本** | ch09/10 破坏性场景改用 rule tree 配置字段 + CloudFront 侧实测印证 |
 
-### 8.2 Phase 0 启动前待决的未决项（基础设施层）
+### 8.2 Phase 0 启动前待决的未决项（基础设施层）· **2026-04-22 客户已确认**
 
-| # | 未决项 | 决策期望 |
+| # | 项 | 客户确认值 |
 |---|---|---|
-| U1 | AWS 账号 ID / profile 名 | Phase 0 Day 1 |
-| U2 | EC2 实例类型（默认 `t3.small`） | Phase 0 Day 1 |
-| U3 | Doris 实例类型（默认 `t3.xlarge`） | Phase 0 Day 2 |
-| U4 | 对比测试 baseline 打生产的频率 / 窗口（默认 ≤ 10 req/hour，00:00-06:00 CST） | Phase 0 Day 2 |
-| U5 | tfstate S3 bucket 名 | Phase 0 Day 1 |
-| U6 | `keithyu.cloud` hosted zone 是否已在 AWS Route53（还是 Cloudflare/其他） | Phase 0 Day 1 |
+| U1 | AWS 账号 ID / profile | **`434465421667`**（旧 longqi 演示账号）· profile `default` |
+| U2 | 源站 EC2 实例类型 | **`t3.xlarge`**（客户指定，高于默认 t3.small） |
+| U3 | Doris 单机 EC2 实例类型 | **`t3.xlarge`** |
+| U4 | baseline 打 Akamai 生产的频率 / 窗口 | **一次性对比测试，不限 recurring 频率和时间窗口**（部署完之后跑一次做方案验证） · 保留 READ-ONLY + 固定 UA 硬栅栏 |
+| U5 | tfstate S3 bucket 名 | **`tfstate-akamai-to-aws-longqi-434465421667`** |
+| U6 | `keithyu.cloud` hosted zone | **Route53 已就绪，ACM 证书已存在** — Phase 0 Task 02 可复用已有证书（见下方 note） |
+
+> **U6 note**：Route53 + ACM 证书已存在 → phase0 Task 02（ACM 创建）可改为**用 terraform `data "aws_acm_certificate"` 引用已有证书**，而非 `resource` 新建；能省约 5 分钟 apply 时间并避免重复证书。实施时先用 `aws acm list-certificates --region us-east-1` 确认存量证书是否覆盖 `*.beautyforever.keithyu.cloud` 所需 SAN。
 
 ### 8.3 技术层待细化 / 客户需确认项
 
-以下项在 2026-04-22 交叉 review 中发现（详见 [`coverage-matrix.md`](./coverage-matrix.md) 🔴 Todo 项），各 plan 已同步补 task：
+以下项在 2026-04-22 交叉 review 中发现（详见 [`coverage-matrix.md`](./coverage-matrix.md)）。客户已于 2026-04-22 回复部分项，其余仍在评估中。
 
-| # | 技术点 | Akamai 依据 | 需客户确认什么 | 归属 plan |
-|---|---|---|---|---|
-| T1 | **Host 透传方案**：CloudFront 不允许透传 viewer Host → ALB | essl §3、api §3 `forwardHostHeader=REQUEST_HOST_HEADER` | 确认我们用"Function 注入 `x-viewer-host`，ALB listener rule 按该 header 分流"的方案 OK | phase0 T05 |
-| T2 | **Origin Shield 区域选择** | essl §6、api §6 `tieredDistribution=true` | 选 `ap-northeast-1`（默认同主区）或客户指定 | phase0 T05 |
-| T3 | **`stale-while-revalidate` / `stale-if-error` 值** | essl §6、api §6 `prefreshCache=90%` + `cacheError ttl=10s` | 确认 SWR window 和 SIE window 具体秒数 | part2 T14 |
-| T4 | **api 扩展名分桶 TTL** | api §6 | 确认 CSS/JS/字体 365d、图片 30d、Files 7d 等是否直接照搬 | part2 T14 |
-| T5 | **`/static/*` 特殊 token** `LT1RVf0XvMD1A78LUGJ2JvcSkHTKq8vb` | essl §7 | 确认该 token 是否仍在使用、迁移后是否保留 | part2 T15 |
-| T6 | **Js tag 注入的具体 JS 内容** | essl §11 | 待客户提供 JS 源码后才能在 CloudFront Function viewer-response 实现 | part3 T17 |
-| T7 | **`modifyOutgoingRequestHeader`** 具体 header 名和值 | essl §17、api §14 | 需读 raw JSON 或问运维 | part3 T17 |
-| T8 | **OWASP Managed Rule Group 选哪些** | waf §4 Application ✅ | `AWSManagedRulesCommonRuleSet` 必选；SQLi / KnownBadInputs / LinuxRuleSet 可选 | part4 T18 |
-| T9 | **AWS WAF Labels → `X-WAF-Rules-Triggered`** 方案 | essl §15 `PMUSER_TRIGGERED_RULES` | 确认业务侧消费此 header 的方式 | part4 T19 |
-| T10 | **`breakConnection: enabled=true`（api）** 是否保留 | api §10 | 客户确认是演练残留还是刻意保留 | part4 T20 |
-| T11 | **Adaptive Acceleration / SureRoute / IVM** 迁移缺口如何交代 | essl §6/§8/§13 | 客户选"无损替代"或"接受缺口"；deliver 以客户选择为准 | wrapup Known Gaps |
-| T12 | **HSTS preload 不可逆** | essl §0 note | 客户确认接受不可逆再 apply | part3 T17 |
+| # | 技术点 | 客户 2026-04-22 回复 | 状态 |
+|---|---|---|---|
+| T1 | **Host 透传方案**：CF Function 注入 `X-Viewer-Host`，ALB 按此 header 分流 | **接受**。客户补充：真实源 `lq-bf-nuxt-1212474737.us-east-2.elb.amazonaws.com` ALB 也是按域名分流、背后单台服务器。迁移拓扑等价 | ✅ 已确认 |
+| T2 | Origin Shield 区域选择 | **等 Keith 解释用途后决定** | 🟡 待解释 |
+| T3 | `stale-while-revalidate` / `stale-if-error` 值 | **等 Keith 解释用途后决定** | 🟡 待解释 |
+| T4 | api 扩展名分桶 TTL | **接受默认值**（CSS/JS/字体 365d、图片 30d、Files 7d；对齐 Akamai） | ✅ 已确认 |
+| T5 | `/static/*` 特殊 token `LT1RVf0XvMD1A78LUGJ2JvcSkHTKq8vb` | **保留**（按 token 值拆 cache 版本） | ✅ 已确认 |
+| T6 | "Js tag" 真相 | **发现不是 JS 注入** —— 读 raw JSON 确认 `Js tag` 节点的 behaviors 只有 `cacheTag` (值 `bf-www-js` / `bf-m-js`)；功能合并到 ch12 Tag Invalidation (Part 5 T22) | ✅ 已确认（无需客户提供 JS） |
+| T7 | `modifyOutgoingRequestHeader` 具体回源头 | **从 raw JSON 提取：`Source-Auth: akamai-lqhair`**（essl + api 同值）。POC 保留此值迁移无感；客户若需改 value 为 `cloudfront-lqhair` 需同步改源站鉴权逻辑 | ✅ 已确认 |
+| T8 | WAF Managed Rule Group 选哪些 | **全部启用**：`CommonRuleSet` + `SQLiRuleSet` + `KnownBadInputsRuleSet` + `LinuxRuleSet` + `UnixRuleSet` + `PHPRuleSet` | ✅ 已确认 |
+| T9 | AWS WAF Labels → `X-WAF-Rules-Triggered` 方案 | **等 Keith 解释 Akamai 原用法 + AWS 侧支持情况** | 🟡 待解释 |
+| T10 | `breakConnection: enabled=true`（api）保留与否 | **等 Keith 解释用途后决定** | 🟡 待解释 |
+| T11 | Adaptive Accel / SureRoute / IVM 缺口（拆分到 G2/G3/G4 分别处理） | G4 IVM **明确不需要**（API 是静态 JSON，无图像处理需求）；G2/G3 待解释 | 🟡 部分待解释 |
+| T12 | HSTS preload 是否启用 | **等 Keith 解释不可逆含义后决定** | 🟡 待解释 |
+
+### 8.4 迁移缺口接受度（G 系列）· **2026-04-22 客户已确认**
+
+| # | 缺口 | 客户回复 |
+|---|---|---|
+| G1 | HTTP/3 放弃（换 CICD） | **接受**：HTTP/2 够用，主要演示 CICD 持续集成发布能力 |
+| G2 | SureRoute PERFORMANCE | 🟡 等 Keith 解释后决定 |
+| G3 | Adaptive Acceleration | 🟡 等 Keith 解释后决定 |
+| G4 | Image and Video Manager | **接受缺口**：API 是静态 JSON，不涉及图像处理 |
+| G5 | TLS Fingerprint 规则 | **暂时接受缺口**（待 Keith 解释用途后客户可能改变决定） |
+| G6 | Bot Manager → Bot Control | **按 path 同时演示 `Common` 和 `Targeted` 两档**，让客户自评估选哪档 |
+| G7 | Slow POST Protection | 🟡 等 Keith 解释后决定 |
 
 ---
 

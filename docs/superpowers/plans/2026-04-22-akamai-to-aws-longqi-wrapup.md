@@ -201,39 +201,39 @@ scripts/
 | 对比测试框架 | `Cloudfront/test-harness/` |
 | Git Tag | `v1.0.0` |
 
-## 已知迁移缺口（写入 delivery / README / coverage-matrix）
+## 已知迁移缺口（2026-04-22 客户回复后更新）
 
-**按类型汇总（全部来自 `docs/superpowers/specs/coverage-matrix.md` 🟡 状态项）**：
+**按类型汇总。✅ = 客户已明确接受或提供替代方案；🟡 = 待 Keith 进一步解释后客户决定。**
 
 ### 协议 / 网络能力
-1. **HTTP/3**：为 CloudFront CICD 放弃（trade-off，客户可选是否接受）
-2. **Akamai `SureRoute PERFORMANCE`**：AWS 无精确等价；Origin Shield + Tiered Cache 部分替代；动态路径优化能力有损失
-3. **Akamai `Adaptive Acceleration`**（MPulse 驱动 Push/Preconnect/Preload）：AWS 无原生等价；客户可用应用层 `<link rel="preconnect">` 等补偿
+1. ✅ **HTTP/3**（客户 G1 已接受）：HTTP/2 够用，主要演示 CICD 持续集成发布能力
+2. 🟡 **Akamai `SureRoute PERFORMANCE`**（客户 G2 待 Keith 解释后决定）：AWS 无精确等价；Origin Shield + Tiered Cache 部分替代
+3. 🟡 **Akamai `Adaptive Acceleration`**（客户 G3 待 Keith 解释后决定）：AWS 无原生等价；应用层 `<link rel="preconnect">` 补偿
 
 ### WAF / 安全
-4. **TLS Fingerprint 规则**（Client TLS Fingerprint 系列 Custom Rules）：AWS WAF 不原生支持 JA3/JA4
-5. **Akamai Bot Manager** → AWS Bot Control：非 1:1 映射，AWS 是 `Common` / `Targeted` 等级
-6. **Slow POST**：AWS 无原生等价；`size_constraint_statement` + CloudFront 超时 partial equivalence
-7. **Rate Policy 窗口**：Akamai rpm vs AWS 5-min sliding，数值按 "Akamai rpm × 5" 换算
+4. 🟡 **TLS Fingerprint 规则**（客户 G5 暂接受，待 Keith 解释后可能改变）：AWS WAF 不原生支持 JA3/JA4
+5. ✅ **Akamai Bot Manager → AWS Bot Control**（客户 G6 确认）：按 path 同时演示 Common + Targeted 两档，客户自评估
+6. 🟡 **Slow POST**（客户 G7 待 Keith 解释后决定）：AWS `size_constraint_statement` + CloudFront 超时 partial
+7. **Rate Policy 窗口**：Akamai rpm vs AWS 5-min sliding，数值按 "Akamai rpm × 5" 换算（delivery §10 自动处理）
 
 ### 精度 / 缓存
-8. **`prefreshCache = 90%`** → `stale-while-revalidate = 10%×TTL` 近似（精度差异 < 1 分钟）
-9. **`cacheError ttl=10s preserveStale=true`** → `stale-if-error=60` + Custom Error Response min-TTL=10 近似
-10. **Mobile UA 检测**：Akamai `deviceCharacteristic[IS_MOBILE]` 用内部设备库；CloudFront Function 用 UA 正则——边角 UA 可能分歧
+8. 🟡 **`prefreshCache = 90%`**（客户 T3 待 Keith 解释）→ `stale-while-revalidate = 10%×TTL` 近似
+9. 🟡 **`cacheError ttl=10s preserveStale=true`**（客户 T3 待 Keith 解释）→ `stale-if-error=60` + CER min-TTL=10
+10. **Mobile UA 检测**：Akamai `deviceCharacteristic[IS_MOBILE]` vs CloudFront Function UA 正则——边角 UA 可能分歧
 
 ### 图像 / 前端辅助
-11. **`Image and Video Manager (IVM)`**：AWS 无原生图像处理；可用 CloudFront + Lambda@Edge 或 CloudFront Image Optimizer（2024）补
-12. **`Augment insights` / mPulse**：AWS 可选 CloudWatch RUM 替代；客户自决
+11. ✅ **`Image and Video Manager (IVM)`**（客户 G4 确认不需要）：API 是静态 JSON，无图像处理需求
+12. **`Augment insights` / mPulse**：客户自决是否用 CloudWatch RUM 替代
 
 ### 黑盒 / 待人工审阅
 13. **Akamai `Advanced` XML metadata**（essl §18）：未解析，迁移前人工审阅
-14. **`Js tag` 注入**（essl §11）：POC 用 placeholder；客户提供真实 JS 源码后再上
-15. **`modifyOutgoingRequestHeader`** 具体回源头列表：POC 只建结构；具体 header 待客户补齐（spec §8.3 T7）
+14. ✅ **`Js tag` 真相**（客户 T6 确认）：读 raw JSON 发现是 cacheTag 不是 JS 注入；归并到 ch12 Tag Invalidation（`bf-www-js` / `bf-m-js`）
+15. ✅ **`modifyOutgoingRequestHeader`**（客户 T7 读 raw JSON 后确认）：POC 按原值保留 `Source-Auth: akamai-lqhair`
 
 ### 客户决策项
-16. **HSTS preload 不可逆**：客户确认接受再 apply
-17. **`breakConnection: enabled=true`（api）** 故障注入：客户确认保留还是删除
-18. **Origin Shield 区域选择**：默认 `ap-northeast-1` 主区；客户可指定
+16. 🟡 **HSTS preload 不可逆**（客户 T12 待 Keith 解释含义）
+17. 🟡 **`breakConnection: enabled=true`（api）** 故障注入（客户 T10 待 Keith 解释用途）
+18. 🟡 **Origin Shield 区域选择**（客户 T2 待 Keith 解释用途）
 
 ## 下一步（客户侧）
 

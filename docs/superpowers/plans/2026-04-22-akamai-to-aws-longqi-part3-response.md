@@ -199,34 +199,36 @@ Cloudfront/
           return False, f"header {k}: expected absent, got present"
   ```
 
-- [ ] **17.6 JS Tag 注入（coverage D8 / C5，viewer-response Function）**：对齐 Akamai essl §11 `Js tag` 注入的占位。
+- [ ] **17.6 "Js tag" 真相 → 归并到 ch12 Tag Invalidation**（coverage D8，spec §8.3 T6）
 
-  **状态**：spec §8.3 T6 明示"待客户提供具体 JS 源码后才能实现"。本 task 只建**占位 Function + attach**，源码内容先用客户提供前的 placeholder（注入一个 `<script>/* BF_JS_TAG_PLACEHOLDER */</script>` 到 `<head>` 末尾）。
+  **2026-04-22 读 `Akamai/raw/essl_rules.json` 后发现**：essl 的 `Js tag` 节点**不是**向页面注入 JS，而是给 `.js` 文件打 `cacheTag`：
 
-  ```javascript
-  // terraform/modules/cloudfront-functions/src/viewer-response.js
-  function handler(event) {
-    var res = event.response;
-    var ct = res.headers['content-type'] ? res.headers['content-type'].value : '';
-    if (ct.indexOf('text/html') < 0) return res;
-
-    // CloudFront Function viewer-response has limited body modify capability;
-    // real HTML rewrite should use Lambda@Edge for production.
-    // POC: signal presence via header, actual injection done in origin (Node.js mock ch07 step 17.7).
-    res.headers['x-bf-js-tag'] = { value: 'placeholder' };
-    return res;
+  ```json
+  {
+    "name": "Js tag",
+    "children": [
+      { "name": "www.beautyforever.com",
+        "criteria": [{host=www.beautyforever.com, fileExtension=js}],
+        "behaviors": [{ "name": "cacheTag", "options": { "tag": "bf-www-js" } }] },
+      { "name": "m.beautyforever.com",
+        "criteria": [{host=m.beautyforever.com, fileExtension=js}],
+        "behaviors": [{ "name": "cacheTag", "options": { "tag": "bf-m-js" } }] }
+    ]
   }
   ```
 
-  **部署**：
-  - `terraform/modules/cloudfront-functions/main.tf` 新增 `aws_cloudfront_function "viewer_response"`（publish=true）
-  - `cloudfront-www/main.tf` 的 `default_cache_behavior` + 所有 `ordered_cache_behavior` 加第二条 `function_association { event_type = "viewer-response" ... }`
-
-  **mock 侧配合**：`beautyforever/routes/www.js` + `m.js` 的 HTML 响应在 `<head>` 末尾注入 `<script>/* BF_JS_TAG_PLACEHOLDER */</script>`，等客户提供真正 JS 后替换。
+  **结论**：
+  - **本 task 取消**。无需 viewer-response Function，无需客户提供 JS 源码
+  - `bf-www-js` / `bf-m-js` 作为 `Surrogate-Key` tag 迁到 Part 5 Task 22.1 的 mapping
+  - coverage-matrix D8 状态由 🔴 → ✅（合并到 Part 5 T22）
 
 - [ ] **17.7 modifyOutgoingRequestHeader（coverage D7 / I6）**：对齐 Akamai essl §17 + api §14 `指定回源请求头`。
 
-  **状态**：spec §8.3 T7 明示"具体 header 名和值需读 raw JSON 或问运维"。本 task 先建**结构**，等客户补齐具体值后填充。
+  **2026-04-22 从 raw JSON 提取到具体值**：essl 和 api 都只加了**一个 header**：
+
+  ```
+  Source-Auth: akamai-lqhair
+  ```
 
   在 `cloudfront-www/main.tf` 和 `cloudfront-api/main.tf` 的 `origin` 块加 `custom_header`：
 
@@ -235,31 +237,34 @@ Cloudfront/
     domain_name = var.origin_alb_dns
     origin_id   = "alb-origin"
 
-    # TODO (spec §8.3 T7): after reading raw Akamai rule tree or asking ops,
-    # add specific headers here. Example placeholder:
-    # custom_header {
-    #   name  = "X-BF-From-CloudFront"
-    #   value = "1"
-    # }
+    # Matches Akamai essl §17 / api §14 "指定回源请求头":
+    # Source-Auth is likely the origin's Akamai-specific auth token.
+    # Keeping value unchanged means origin's auth logic works unmodified.
+    # Customer may later rotate to a CloudFront-specific value (e.g.,
+    # "cloudfront-lqhair") once origin validation is updated.
+    custom_header {
+      name  = "Source-Auth"
+      value = "akamai-lqhair"
+    }
+
     # ...existing custom_origin_config + origin_shield...
   }
   ```
 
-  delivery §7.3 明示 "具体 header 值 TBD，待客户补齐"。
+  **delivery §7.3** 说明 "Source-Auth 保留原值迁移无感；客户若需轮转为新值需同步源站鉴权逻辑"。
 
 - [ ] **17.8 hands-on + delivery md**：
 
   **重点强调**：
-  - Akamai `" x-authentic-ip"`（前导空格）是 bug，新项目修正为 `x-authentic-ip`
-  - HSTS preload 不可逆，客户确认后再 apply
+  - Akamai `" x-authentic-ip"`（前导空格）迁移修正为 `x-authentic-ip`（raw JSON 核对：原始已经是 `x-authentic-ip` 无空格，文档描述误判，迁移 Function 用正确名即可）
+  - HSTS preload 不可逆，客户确认后再 apply（spec §8.3 T12）
   - `X-Powered-By` 和 `Server` 作为 response header 被删（防指纹）
   - True-Client-IP 通过 CloudFront Function 从 `CloudFront-Viewer-Address` 派生
   - `removeVary` 两侧策略差异：www/m 删、api 保留
   - `Timing-Allow-Origin: *` 给 RUM 跨域采集
-  - JS tag 注入：POC 只占位，等客户 JS 源码
-  - `modifyOutgoingRequestHeader`：POC 只占位，等客户补齐具体 header
+  - `Source-Auth: akamai-lqhair` 回源鉴权 header 保留（值迁移后客户可选是否轮转）
 
-- [ ] **17.9 commit**：`ch07: response headers + hsts 2y + true-client-ip + timing-allow-origin + vary strategy + js tag placeholder + origin custom headers`
+- [ ] **17.9 commit**：`ch07: response headers + hsts 2y + true-client-ip + timing-allow-origin + vary strategy + source-auth custom header`
 
 **验收信号**：
 - `curl -sI https://www.beautyforever.keithyu.cloud/` 返回 `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload`；**不含** `X-Powered-By` 和 `Server`

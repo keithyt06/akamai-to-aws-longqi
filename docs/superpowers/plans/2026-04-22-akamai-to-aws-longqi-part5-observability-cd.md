@@ -235,24 +235,34 @@ Cloudfront/
 
 - [ ] **22.1 mock 输出 Surrogate-Key 头**：
 
-  在 `beautyforever/routes/www.js` 等里按路径输出：
+  **Surrogate-Key mapping**（对齐 Akamai cacheTag，**含 ch07 Js tag 归并过来的 `bf-www-js` / `bf-m-js`**）：
+
+  | 路径 | www host 的 Surrogate-Key | m host 的 Surrogate-Key | Akamai 依据 |
+  |---|---|---|---|
+  | `/` | `bf-all bf-home` | 同 | essl §7 首页 |
+  | `/blog` (列表) | `bf-blog bf-blog-list` | 同 | essl §7 博客 |
+  | `/blog/:slug` | `bf-blog bf-blog-<slug>` | 同 | essl §7 博客详情 |
+  | `/activity*` | `bf-all bf-activity` | 同 | essl §7 活动 |
+  | `*.html`（其他）| `bf-all bf-listinfo` | 同 | essl §7 列表&详情 |
+  | **`*.js`（静态）** | **`bf-www-js`** | **`bf-m-js`** | essl §11 Js tag（ch07 归并） |
 
   ```javascript
+  // www.js
   router.get('/', (_req, res) => {
     res.setHeader('Surrogate-Key', 'bf-all bf-home');
-    res.setHeader('Cache-Control', 's-maxage=21600, max-age=0');
+    res.setHeader('Cache-Control', 's-maxage=21600, stale-while-revalidate=2160, stale-if-error=60, max-age=0');
     res.type('text/html').send(...);
   });
 
   router.get('/blog', (_req, res) => {
     res.setHeader('Surrogate-Key', 'bf-blog bf-blog-list');
-    res.setHeader('Cache-Control', 's-maxage=31536000, max-age=0');
+    res.setHeader('Cache-Control', 's-maxage=31536000, stale-while-revalidate=86400, stale-if-error=60, max-age=0');
     res.type('text/html').send(...);
   });
 
   router.get('/blog/:slug', (req, res) => {
     res.setHeader('Surrogate-Key', `bf-blog bf-blog-${req.params.slug}`);
-    res.setHeader('Cache-Control', 's-maxage=31536000, max-age=0');
+    res.setHeader('Cache-Control', 's-maxage=31536000, stale-while-revalidate=86400, stale-if-error=60, max-age=0');
     res.type('text/html').send(...);
   });
 
@@ -265,7 +275,16 @@ Cloudfront/
     res.setHeader('Surrogate-Key', 'bf-all bf-listinfo');
     res.type('text/html').send(...);
   });
+
+  // New: Js tag mapped from Akamai essl §11 (confirmed 2026-04-22 via raw JSON)
+  router.get(/\.js$/, (req, res) => {
+    res.setHeader('Surrogate-Key', 'bf-www-js');
+    res.setHeader('Cache-Control', 's-maxage=31536000, stale-while-revalidate=86400, max-age=31536000');
+    res.type('application/javascript').send('// bf-www-js asset');
+  });
   ```
+
+  `m.js` 对应的 `.js` route Surrogate-Key 值改为 `bf-m-js`。
 
   5 个标签对齐 Akamai：`bf-all / bf-home / bf-blog (+slug) / bf-listinfo / bf-activity`
 

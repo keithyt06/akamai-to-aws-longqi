@@ -445,7 +445,7 @@ Cloudfront/delivery/
 
 ## Task 03：Origin EC2 + ALB 模块
 
-**目标**：1 台 EC2（t3.small，Amazon Linux 2023，`ap-northeast-1a`）跑 Node.js mock；1 ALB 公网可达，3 条 listener rule 按 **`X-Viewer-Host` 自定义 header**（**不是 Host header**）把 `www/m/api.*` 路由到同一个 target group。
+**目标**：1 台 EC2（**t3.xlarge**，Amazon Linux 2023，`ap-northeast-1a`）跑 Node.js mock；1 ALB 公网可达，3 条 listener rule 按 **`X-Viewer-Host` 自定义 header**（**不是 Host header**）把 `www/m/api.*` 路由到同一个 target group。
 
 > **⚠ 重要设计决策（对齐 coverage-matrix A4：Akamai `forwardHostHeader = REQUEST_HOST_HEADER`）：**
 > CloudFront 不允许把 viewer 的原始 Host header 直接透传到 origin（CloudFront 强制把 Origin 配置的 domain name 作为 Host 发给 origin）。因此 ALB 必须按 **自定义 header** 分流，而非 Host header。
@@ -591,7 +591,7 @@ Cloudfront/delivery/
 
     resource "aws_instance" "origin" {
       ami                    = data.aws_ami.al2023.id
-      instance_type          = "t3.small"
+      instance_type          = "t3.xlarge"  # confirmed by customer 2026-04-22 (spec §8.2 U2)
       subnet_id              = var.instance_subnet_id
       vpc_security_group_ids = [aws_security_group.ec2.id]
 
@@ -1958,8 +1958,9 @@ Cloudfront/delivery/
         "api.beautyforever.com",
     }
     BASELINE_UA = "Keithyu-Akamai-Baseline/1.0 (read-only)"
-    MAX_REQ_PER_HOUR = 10
-    ALLOWED_WINDOW_UTC = (16, 22)  # 00:00-06:00 CST = 16:00-22:00 UTC (previous day)
+    # Per spec §8.2 U4 (confirmed 2026-04-22): baseline is one-shot post-deploy
+    # comparison, NOT recurring. No hourly/rate/time-window limit. Only hard
+    # guards remain: READ-ONLY method, host whitelist, fixed UA.
 
 
     class GuardViolation(RuntimeError):
@@ -1974,24 +1975,14 @@ Cloudfront/delivery/
     def assert_host(host: str) -> None:
         if host not in ALLOWED_AKAMAI_HOSTS:
             raise GuardViolation(f"Baseline host {host!r} not in whitelist {ALLOWED_AKAMAI_HOSTS}")
-
-
-    def assert_window(now: datetime | None = None) -> None:
-        now = now or datetime.now(timezone.utc)
-        start, end = ALLOWED_WINDOW_UTC
-        if not (start <= now.hour < end):
-            raise GuardViolation(
-                f"Baseline only runs in UTC {start}:00-{end}:00 (current UTC hour {now.hour})"
-            )
     ```
 
     `test-harness/test/test_guards.py`（TDD 先写测试）:
 
     ```python
     import pytest
-    from datetime import datetime, timezone
     from baseline.guards import (
-        assert_method, assert_host, assert_window, GuardViolation,
+        assert_method, assert_host, GuardViolation,
     )
 
     def test_method_get_allowed():
@@ -2008,13 +1999,6 @@ Cloudfront/delivery/
     def test_host_rejected():
         with pytest.raises(GuardViolation):
             assert_host("sapi.beautyforever.com")
-
-    def test_window_inside():
-        assert_window(datetime(2026, 4, 22, 18, 30, tzinfo=timezone.utc))  # UTC 18:30 == CST 02:30
-
-    def test_window_outside():
-        with pytest.raises(GuardViolation):
-            assert_window(datetime(2026, 4, 22, 10, 0, tzinfo=timezone.utc))  # UTC 10 == CST 18 白天
     ```
 
     **运行**：
@@ -2025,7 +2009,7 @@ Cloudfront/delivery/
     . .venv/bin/activate
     pip install -r requirements.txt
     PYTHONPATH=. pytest test/test_guards.py -v
-    # 预期：6 pass
+    # 预期：4 pass
     ```
 
 - [ ] **Step 8.3：probe.py（baseline + probe 共享核心）**
@@ -2043,7 +2027,7 @@ Cloudfront/delivery/
     from datetime import datetime, timezone
     import httpx
     import yaml
-    from baseline.guards import assert_method, assert_host, assert_window, BASELINE_UA, GuardViolation
+    from baseline.guards import assert_method, assert_host, BASELINE_UA, GuardViolation
 
 
     def run_case(case: dict, akamai_host: str) -> dict:
@@ -2069,7 +2053,7 @@ Cloudfront/delivery/
 
     def main():
         case_file = Path(sys.argv[1])
-        assert_window()  # <-- hard stop if outside window
+        # No time-window check (spec §8.2 U4: one-shot baseline, unrestricted)
 
         chapter = yaml.safe_load(case_file.read_text())
         day = datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -2336,7 +2320,7 @@ Cloudfront/delivery/
     .PHONY: setup test-guards smoke smoke-probe smoke-report
     ```
 
-- [ ] **Step 8.7：跑 smoke（只 probe 侧，因为 baseline 要在 UTC 窗口内）**
+- [ ] **Step 8.7：跑 smoke**
 
     ```bash
     cd Cloudfront/test-harness
@@ -2663,7 +2647,7 @@ Cloudfront/delivery/
 - [ ] Task 05: 2 CloudFront Distribution（HTTP/2-only）
 - [ ] Task 06: 3 空 WAF Web ACL
 - [ ] Task 07: Doris + Kinesis + log-consumer 骨架
-- [ ] Task 08: test-harness 骨架（6 guard test 绿）
+- [ ] Task 08: test-harness 骨架（4 guard test 绿）
 - [ ] Task 09: delivery index + 12 占位
 - [ ] Task 10: 端到端 smoke · 里程碑达成
 

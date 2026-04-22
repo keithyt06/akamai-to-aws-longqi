@@ -131,7 +131,67 @@ Cloudfront/
   }
   ```
 
-  **WCU 预算**：`CommonRuleSet` 700 + `SQLi` 200 + `KnownBadInputs` 200 = 1100 WCU base；Custom Rules + Rate + Bot 需要紧扣剩余预算。若超 1500 → 拆 ACL。具体选哪几个 Managed Rule Group 依据 spec §8.3 T8 的客户确认。
+  **客户 2026-04-22 确认（spec §8.3 T8）**：**6 个 Managed Rule Group 全部启用** —— 在上面 3 条之外再加 3 条：
+
+  ```hcl
+  rule {
+    name     = "aws-linux"
+    priority = 8
+    override_action { none {} }
+    statement {
+      managed_rule_group_statement {
+        vendor_name = "AWS"
+        name        = "AWSManagedRulesLinuxRuleSet"
+      }
+    }
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "aws-linux"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  rule {
+    name     = "aws-unix"
+    priority = 9
+    override_action { none {} }
+    statement {
+      managed_rule_group_statement {
+        vendor_name = "AWS"
+        name        = "AWSManagedRulesUnixRuleSet"
+      }
+    }
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "aws-unix"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  rule {
+    name     = "aws-php"
+    priority = 10
+    override_action { none {} }
+    statement {
+      managed_rule_group_statement {
+        vendor_name = "AWS"
+        name        = "AWSManagedRulesPHPRuleSet"
+      }
+    }
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "aws-php"
+      sampled_requests_enabled   = true
+    }
+  }
+  ```
+
+  **WCU 预算（6 MRG 全启用）**：
+  - CommonRuleSet 700 + SQLi 200 + KnownBadInputs 200 + Linux 200 + Unix 100 + PHP 100 ≈ **1500 WCU 基线**
+  - 加 19 条 Custom Rules (~50-100 WCU) + 5 Rate (~10 WCU) + Bot Control (50-1500) → **必然超限**
+  - **Phase 0 Task 06 Web ACL 布局需要调整**：`deny` / `api` 各自 ACL 只能容纳"Custom Rules + Rate"，Managed Rule Groups 单独放入 `managed` 这个"第 4 个 Web ACL"，通过 **AWS Firewall Manager** 或直接在 `deny` / `api` ACL 中用 `rule_group_reference_statement` 引用共享 Rule Group
+  - **推荐方案**：创建 `aws_wafv2_rule_group "managed_mrg_pack"`（含 6 个 MRG），在 `deny` / `api` Web ACL 里以 `rule_group_reference_statement` 引用；Rule Group 自身 WCU 上限 1500 正好够 6 个 MRG
+  - **验收命令**：`aws wafv2 get-web-acl --scope CLOUDFRONT --name <acl> --region us-east-1 --query 'WebACL.Capacity'` 应返回 ≤ 1500
 
 - [ ] **18.5 test-harness 用例（4 条非破坏性 + 2 条破坏性）**：
   - `www` 普通请求返回 200（WAF 默认 Allow）
@@ -293,11 +353,18 @@ bypass test agent · Deny UA · Deny Client TLS Fingerprint 系列 · Monitor vc
   **换算**：Akamai 的 rpm (request per minute) vs AWS 的 5-min sliding window。AWS WAF rate window 固定 5 min，所以 Akamai 15 rpm → 75 / 5-min；25 rpm → 125 / 5-min。在 delivery §10.3 解释换算。
 
 - [ ] **20.2 Slow POST**：AWS WAF 原生支持 `size_constraint_statement`，对 body 大小设上限可以 partial 模拟 Slow POST。或在 CloudFront 层配 request timeout。**标注为 partial equivalence**。
-- [ ] **20.3 Bot Manager**：启用 AWS Managed Rule Group `AWSManagedRulesBotControlRuleSet`：
+- [ ] **20.3 Bot Manager — 按 path 同时演示 Common + Targeted 两档**（客户 2026-04-22 G6 确认）：让客户在同一环境里直接对比两档效果，自评估生产该选哪档。
+
+  **分档策略**：
+  - **Common 档** (50 WCU)：覆盖首页、列表页、博客、活动页等**公开浏览路径**。检测成本低、能拦 80% 普通爬虫（known bad bot UA、scraper）
+  - **Targeted 档** (1500 WCU，独占 ACL 容量)：覆盖 `/api/v1/order*`、`/api/v1/cart*`、`/api/v1/checkout*`、`/api/v1/user/*`、`/api/v1/payment*` 等**敏感路径**。支持 ML 模型、CAPTCHA 挑战、fingerprint 识别，能拦专门针对该站的高级 bot
+
+  **实现**：WAF `rule` 的 `scope_down_statement` 按 URI 限定生效范围。需要 **2 个独立 rule**（Common 和 Targeted 不能在同一 rule 里叠用）：
 
   ```hcl
+  # Common: applies to everything except sensitive API paths
   rule {
-    name     = "bot-control"
+    name     = "bot-control-common"
     priority = 100
     override_action { none {} }
     statement {
@@ -306,18 +373,123 @@ bypass test agent · Deny UA · Deny Client TLS Fingerprint 系列 · Monitor vc
         name        = "AWSManagedRulesBotControlRuleSet"
         managed_rule_group_configs {
           aws_managed_rules_bot_control_rule_set {
-            inspection_level = "COMMON"  # or TARGETED (higher WCU cost)
+            inspection_level           = "COMMON"
+            enable_machine_learning    = false
+          }
+        }
+        scope_down_statement {
+          not_statement {
+            statement {
+              or_statement {
+                statement { byte_match_statement {
+                  search_string = "/api/v1/order"
+                  field_to_match { uri_path {} }
+                  positional_constraint = "STARTS_WITH"
+                  text_transformation { priority = 0 type = "LOWERCASE" }
+                }}
+                statement { byte_match_statement {
+                  search_string = "/api/v1/cart"
+                  field_to_match { uri_path {} }
+                  positional_constraint = "STARTS_WITH"
+                  text_transformation { priority = 0 type = "LOWERCASE" }
+                }}
+                statement { byte_match_statement {
+                  search_string = "/api/v1/checkout"
+                  field_to_match { uri_path {} }
+                  positional_constraint = "STARTS_WITH"
+                  text_transformation { priority = 0 type = "LOWERCASE" }
+                }}
+                statement { byte_match_statement {
+                  search_string = "/api/v1/payment"
+                  field_to_match { uri_path {} }
+                  positional_constraint = "STARTS_WITH"
+                  text_transformation { priority = 0 type = "LOWERCASE" }
+                }}
+                statement { byte_match_statement {
+                  search_string = "/api/v1/user/"
+                  field_to_match { uri_path {} }
+                  positional_constraint = "STARTS_WITH"
+                  text_transformation { priority = 0 type = "LOWERCASE" }
+                }}
+              }
+            }
           }
         }
       }
     }
-    visibility_config { ... }
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "bot-control-common"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  # Targeted: sensitive API paths only
+  rule {
+    name     = "bot-control-targeted"
+    priority = 101
+    override_action { none {} }
+    statement {
+      managed_rule_group_statement {
+        vendor_name = "AWS"
+        name        = "AWSManagedRulesBotControlRuleSet"
+        managed_rule_group_configs {
+          aws_managed_rules_bot_control_rule_set {
+            inspection_level        = "TARGETED"
+            enable_machine_learning = true
+          }
+        }
+        scope_down_statement {
+          or_statement {
+            statement { byte_match_statement {
+              search_string = "/api/v1/order"
+              field_to_match { uri_path {} }
+              positional_constraint = "STARTS_WITH"
+              text_transformation { priority = 0 type = "LOWERCASE" }
+            }}
+            statement { byte_match_statement {
+              search_string = "/api/v1/cart"
+              field_to_match { uri_path {} }
+              positional_constraint = "STARTS_WITH"
+              text_transformation { priority = 0 type = "LOWERCASE" }
+            }}
+            statement { byte_match_statement {
+              search_string = "/api/v1/checkout"
+              field_to_match { uri_path {} }
+              positional_constraint = "STARTS_WITH"
+              text_transformation { priority = 0 type = "LOWERCASE" }
+            }}
+            statement { byte_match_statement {
+              search_string = "/api/v1/payment"
+              field_to_match { uri_path {} }
+              positional_constraint = "STARTS_WITH"
+              text_transformation { priority = 0 type = "LOWERCASE" }
+            }}
+            statement { byte_match_statement {
+              search_string = "/api/v1/user/"
+              field_to_match { uri_path {} }
+              positional_constraint = "STARTS_WITH"
+              text_transformation { priority = 0 type = "LOWERCASE" }
+            }}
+          }
+        }
+      }
+    }
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "bot-control-targeted"
+      sampled_requests_enabled   = true
+    }
   }
   ```
 
-  Akamai Bot Manager 规则细节在 Akamai 调研没完全抽出，这里用 AWS Common level 兜底。delivery §10.3 说明"非 1:1 等价，是尽力而为"。
+  **对应 mock 扩展**：`beautyforever/routes/api.js` 新增敏感 endpoints（`/v1/order/:id`、`/v1/cart`、`/v1/checkout`、`/v1/payment/:method`、`/v1/user/:id`），全部返回 `{ ok: true, endpoint }`（仅占位，让 Bot Control 能看到这些路径）。
 
-- [ ] **20.4 WCU 预算重测**：Bot Control COMMON 占 50 WCU，TARGETED 占 1500（独占）。如果 COMMON + 其他 rule 仍超 1500，拆 Web ACL。
+- [ ] **20.4 WCU 预算实测**：Bot Control COMMON 50 + TARGETED 1500 同时放 Web ACL → **1550 + 其他 rule 必然超限**。方案：
+  - **Targeted Bot Control 独占一个新 Web ACL** `akamai-to-aws-longqi-bot-targeted`（us-east-1 CLOUDFRONT scope）
+  - 一个 Distribution 只能 associate 一个 Web ACL → 让 **api Distribution** associate `bot-targeted` ACL；**www+m Distribution** associate `deny` ACL（含 Common）
+  - 敏感路径在 api 域名下，恰好天然隔离；若 www 也有敏感路径，需要通过 CloudFront Function rewrite 或接入 api Distribution
+  - **备选方案**：Targeted + 其他规则都转入 AWS Firewall Manager 管理的 Shared Rule Group（但 POC 不引入 Firewall Manager，复杂度太高）
 - [ ] **20.5 test-harness 用例（CloudFront 侧 destructive）**：
   ```yaml
   - id: rate-page-view-trigger-block
