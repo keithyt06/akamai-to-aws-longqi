@@ -1029,6 +1029,10 @@ Cloudfront/delivery/
 - **A4（C1 Host 透传修复）**：引入 phase0 级别的 CloudFront Function（viewer-request）注入 `X-Viewer-Host` header；2 个 Distribution 都绑定
 - **A7（Origin Shield）**：**客户 2026-04-22 T2 决定不开**。理由：主要客户群体在北美，CloudFront 全球 Edge POP 直连能扛住。模块仍保留变量 `origin_shield_enabled`（默认 `false`），以便未来一键开启。
 
+> **Distribution 数量（客户 2026-04-22 round-4 确认）：`www + m` 共用 1 个 Distribution（aliases 数组），`api` 独立 1 个。共计 **2 个** Distribution**（不是 3 个）。对齐 Akamai essl property 同时承载 www+m 的架构，迁移无感；未来若 www/m 需要差异化配置可在 `cloudfront-www` 模块的 ordered_cache_behavior 里用 `x-viewer-host` 值做分支。
+
+> **Path Pattern 优先级（Part 2 T14 详述）**：phase0 Task 05 只定义骨架（default cache behavior 全用 `Managed-CachingDisabled`），不涉及 ordered_cache_behavior。Part 2 T14 阶段一次性补入 10 条 ordered_cache_behavior，顺序从精确到宽泛：`/static/*` → 扩展名资源 → `/activity/*` → `/activity-*` → `/blog` → `/blog/*` → `*.html` → default。详见 [`part2-cache.md`](./2026-04-22-akamai-to-aws-longqi-part2-cache.md) Task 14 Path 优先级表。
+
 **Files:**
 - Create: `Cloudfront/terraform/modules/cloudfront-functions/main.tf`
 - Create: `Cloudfront/terraform/modules/cloudfront-functions/variables.tf`

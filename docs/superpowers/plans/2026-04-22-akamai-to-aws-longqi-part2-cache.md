@@ -53,25 +53,62 @@ Cloudfront/
 
 ---
 
-## Task 14：ch04 · Cache Policy + TTL 矩阵
+## Task 14：ch04 · Cache Policy + TTL 矩阵 + Path Pattern 优先级
 
-**目标**：为 www/m Distribution 配 6 条 ordered_cache_behavior（首页/列表/博客/活动/static/静态资源），每条独立 CachePolicy；api Distribution 保持 default Managed-CachingDisabled。
+**目标**：为 www/m Distribution 配 **10 条** `ordered_cache_behavior`（按客户 2026-04-22 原图补齐 3 处遗漏），每条独立 CachePolicy；api Distribution 保持 default Managed-CachingDisabled + 扩展名分桶。
 
-**TTL 矩阵（对齐 Akamai）**
+### ⚠ Path Pattern 优先级原则
 
-| path_pattern | TTL | Akamai 依据 |
-|---|---|---|
-| `/` （根路径，精确） | 6h | essl v62 §7 首页 |
-| `*.html`（其他 HTML 列表/详情） | 6h | essl §7 列表&详情页 |
-| `/blog` + `/blog/*` | 365d | essl §7 |
-| `/activity/*` + `/activity-*.html` | 6h | essl §7 活动页 |
-| `/static/*` | 1d | essl §7 |
-| `*.css` / `*.js` / `*.woff*` / 图片扩展 | 365d | essl §6 |
+CloudFront `ordered_cache_behavior` 按**定义顺序从前往后匹配**，第一个 path_pattern 命中则生效，后面的跳过。必须**最精确 → 最宽泛**排列。下表顺序就是 `ordered_cache_behavior` 数组的实际声明顺序。
+
+### www + m Distribution 完整 Path 优先级表（客户原图 2984.png 驱动）
+
+| 顺序 | path_pattern | TTL | Cache Tag (Surrogate-Key) | Cache Key 构成 | 客户图依据 |
+|---|---|---|---|---|---|
+| 1 | `/static/*` | 1d | — | **仅路径**（不加 cookie/query）| §5 纯静态 |
+| 2 | `*.css` | 365d | — | cookie + `cacheKeyQueryParams=ALL` | §6 静态资源 |
+| 3 | `*.js` | 365d | `bf-www-js` / `bf-m-js`（by host）| 同上 | §6 + Akamai Js tag（ch07 归并） |
+| 4 | `*.woff` / `*.woff2` / `*.otf` / `*.ttf` / `*.eot` | 365d | — | 同上 | §6 字体 |
+| 5 | `*.jpg` / `*.jpeg` / `*.png` / `*.gif` / `*.webp` / `*.svg` / `*.ico` | 365d | — | path + **INCLUDE_ALL_QUERY_PARAMS** | §6 图片 `Cache-Control: public, max-age=31536000` |
+| 6 | `/activity/*` | 6h | `bf-all bf-activity` | cookie + utm_source 白名单（其他 34 个追踪参数剥离）| §4.a + §4.b |
+| 7 | `/activity-*` | 6h | `bf-all bf-activity` | 同上 | §4 客户图另一种活动页形式 `/activity-spring-sale.html` |
+| 8 | `/blog` | **365d** | `bf-blog` | cookie + **`page` 参数**（分页）+ utm_source 白名单 | §3.a + **§3.b（L1：page 进 cache key）** + §3.c |
+| 9 | `/blog/*` | **365d** | `bf-blog` | 同 `/blog` | §3（**L2：必须拆分，因为 `/blog/*` 不匹配 `/blog` 本身**） |
+| 10 | `*.html` | 6h | `bf-all bf-listInfo` | cookie + utm_source 白名单（34 参数 EXCLUDE）| §2.a + §2.c |
+| — (default) | `/`（根路径 + 兜底） | 6h | `bf-all bf-home` | cookie + utm_source 白名单 | §1.a + §1.c |
+
+### 3 个**重要**的优先级陷阱
+
+1. **`*.html` 必须放在第 10**：晚于 `/blog/*`（顺序 9）和 `/activity-*`（顺序 7）。否则 `/blog/foo.html` 会错误命中 `*.html` 规则（6h 而非 365d）
+2. **`/blog` 和 `/blog/*` 必须分 2 条**（L2 遗漏补发）：CloudFront glob `/blog/*` **不匹配** `/blog` 本身（需要尾 slash 或后缀）
+3. **`/activity/*` 和 `/activity-*` 必须分 2 条**（L3 遗漏补发）：客户生产有两种 URL 形式——`/activity/spring-sale`（子路径）和 `/activity-spring-sale.html`（短横杠变体）
+
+### L1 遗漏：博客 `page` 参数必须进 cache key
+
+客户图 §3.b：**"带指定的查询参数（分页参数 `page`）缓存，其他参数不关心"**。这意味着博客页的 cache key 构成独特：
+- **进 cache key**：`page` 参数（分页）+ `__utm_whitelisted`（当 utm_source 命中白名单）+ cookie
+- **剥离（不进 cache key）**：34 个追踪参数（含 `utm_source` 原名）
+- **其他 query 参数**：不关心 —— 实现上把非 `page` / 非 `__utm_whitelisted` 的 query 也剥离（减少 cache key 空间）
+
+对应 CloudFront 实现：`/blog` 和 `/blog/*` 这两条 behavior 绑定专用 CachePolicy `bf-blog-policy`：
+```hcl
+parameters_in_cache_key_and_forwarded_to_origin {
+  query_strings_config {
+    query_string_behavior = "whitelist"       # 只有白名单里的进 cache key
+    query_strings {
+      items = ["page", "__utm_whitelisted"]   # 保留分页 + utm 白名单
+    }
+  }
+  # ... cookies_config, headers_config
+}
+```
+
+其他 path pattern（首页、列表、活动）用 `"allExcept"` 排除 34 个追踪参数即可。
 
 ### Sub-tasks (skeleton)
 
-- [ ] **14.1 建 `cache-policies` module**：为每个 path pattern 创建 `aws_cloudfront_cache_policy`，`min_ttl/default_ttl/max_ttl` 按上表。**先不带 cookie/query**（ch05/06 会扩）。
-- [ ] **14.2 修 `cloudfront-www/main.tf`**：追加 6 条 `ordered_cache_behavior`，`path_pattern` 按顺序从精确到通配。`target_origin_id = "alb-origin"`，`cache_policy_id` 引用对应 policy，`viewer_protocol_policy = "redirect-to-https"`，attach viewer-request Function。
+- [ ] **14.1 建 `cache-policies` module**：按上面 10 条 path 优先级表，为每种类型创建专用 CachePolicy。合并策略（避免建 10 个 policy）：`bf-static-only-path` / `bf-assets-365d`（css/js/font/image）/ `bf-activity-6h` / `bf-blog-365d`（**特殊**：whitelist `page` + `__utm_whitelisted`）/ `bf-listinfo-6h` / `bf-home-6h`（default behavior 用）。每个 policy 的 `min_ttl / default_ttl / max_ttl` 按上表，**cookie + query 维度在 ch05/06 最终版才接入**（本 task 先建 policy 骨架，cookie 先不进 cache key）。
+- [ ] **14.2 修 `cloudfront-www/main.tf`**：追加 **10 条** `ordered_cache_behavior`，**顺序严格按上表 1-10**。每条：`target_origin_id = "alb-origin"`，`cache_policy_id` 引用对应 policy，`viewer_protocol_policy = "redirect-to-https"`，attach viewer-request Function（已在 phase0 Task 05.0.1 创建）。`/`（根路径）不用 ordered_cache_behavior，而是用 Distribution 的 **`default_cache_behavior`** 作为首页 + 兜底（TTL 6h，对齐客户图 §1）。
 - [ ] **14.3 修 `cloudfront-api/main.tf` —— api 扩展名分桶（coverage B3 / I8）**：对齐 Akamai api v10 §6 扩展名分桶，api Distribution 也加 ordered_cache_behavior：
 
   | path_pattern | TTL | Akamai 依据 |
@@ -148,14 +185,86 @@ srsltid, brid, afsrc
 
 ### Sub-tasks (skeleton)
 
-- [ ] **15.1 扩展 `viewer-request.js`**：
-  - 对 www/m host：把 `utm_source` 值归一化——如果 `∈ {google, facebook.com, tiktok}` 则保留，否则剥离
-  - 对 api host：按 IGNORE 列表剔除参数
-  - 把规范化后的 "cache-key signature" 写入请求头 `X-QS-Signature`
-  - 34 参数 EXCLUDE 通过 CachePolicy 的 `QueryStringsConfig.QueryStringBehavior = "allExcept"` + items 列 34 参数；**但** `utm_source` 不能简单列入 EXCLUDE（因为三值白名单要进 cache key）→ 复合实现：规范化在 Function 里做（把 `utm_source=google/facebook/tiktok` 重写为 `__utm_whitelisted=<val>`，其他 `utm_source=*` 剥离），然后 Policy EXCLUDE 所有 34 个，额外 INCLUDE `__utm_whitelisted`
-- [ ] **15.2 扩展 cache-policies module**：
-  - 对 www/m 的 `*.html` 和 `/` 的 CachePolicy：`QueryStringsConfig = { QueryStringBehavior = "allExcept", items = [34 参数, 不含 __utm_whitelisted] }`
-  - 对 api 的 default CachePolicy：`QueryStringBehavior = "allExcept", items = [IGNORE 列表]`
+### utm_source 白名单 —— 数据流图
+
+对齐客户原图 2984.png 四类页面的 (c) 条：
+
+```
+  浏览器请求
+  /?utm_source=XXX&fbclid=Y&page=2
+         │
+         ▼
+┌─────────────────────────────────────────────────┐
+│ CloudFront Function (viewer-request)             │
+│   if utm_source.value ∈ {google, facebook.com,   │
+│                          tiktok}:                 │
+│       qs['__utm_whitelisted'] = utm_source.value │  ← 注入伪参数
+│   delete qs['utm_source']                        │  ← 剥离原始
+│   for p in 33 tracking params: delete qs[p]      │  ← 剥 fbclid 等
+└─────────────────────┬───────────────────────────┘
+                      ▼
+┌─────────────────────────────────────────────────┐
+│ CloudFront CachePolicy (对应 path 的 policy)     │
+│  · 首页 / 列表 / 活动：                           │
+│      QueryStringBehavior = "allExcept"           │
+│      items = [34 个追踪参数列表]                 │
+│      → utm_source 不进，__utm_whitelisted 进     │
+│  · 博客 /blog + /blog/*:                         │
+│      QueryStringBehavior = "whitelist"           │
+│      items = ["page", "__utm_whitelisted"]       │
+│      → 只有这两个参数进 cache key                │
+│  · 静态 /static/*:                               │
+│      QueryStringBehavior = "none"（路径即 key）  │
+└─────────────────────┬───────────────────────────┘
+                      ▼
+               Final Cache Key
+```
+
+**验证用例**：
+
+| 请求 URL | Function 处理后的 qs | 最终 cache key（`/abc.html` 举例）|
+|---|---|---|
+| `/abc.html?utm_source=google` | `{__utm_whitelisted=google}` | path + cookie + `__utm_whitelisted=google` |
+| `/abc.html?utm_source=bing` | `{}` | path + cookie（和裸 `/abc.html` 同 key → HIT）|
+| `/abc.html?fbclid=xyz` | `{}` | 同上 |
+| `/blog/2?page=2&utm_source=facebook.com` | `{page=2, __utm_whitelisted=facebook.com}` | path + cookie + `page=2` + `__utm_whitelisted=facebook.com` |
+| `/blog/2?page=2&other=x` | `{page=2, other=x}` | **注意**：博客 whitelist 模式下 `other` **不会进** cache key（whitelist 外的 param 被 CachePolicy 丢弃） |
+
+### Sub-tasks
+
+- [ ] **15.1 扩展 `viewer-request.js`**（对齐上面数据流图）：
+
+  ```javascript
+  var UTM_WHITELIST = ['google', 'facebook.com', 'tiktok'];
+  var TRACKING_PARAMS = [ /* 上面列出的 34 个 */ ];
+
+  // ---- utm_source whitelist (runs BEFORE generic stripping)
+  if (req.querystring.utm_source) {
+    var val = req.querystring.utm_source.value.toLowerCase();
+    if (UTM_WHITELIST.indexOf(val) >= 0) {
+      req.querystring['__utm_whitelisted'] = { value: val };
+    }
+  }
+
+  // ---- Strip all 34 tracking params (including utm_source itself)
+  for (var i = 0; i < TRACKING_PARAMS.length; i++) {
+    delete req.querystring[TRACKING_PARAMS[i]];
+  }
+  ```
+
+  **对 api host 的额外处理**：api §6 `cacheKeyQueryParams IGNORE` 列表里的 20+ 广告参数已经包含在 `TRACKING_PARAMS` 34 个里（子集），所以同一套逻辑覆盖 api；api Distribution 的 CachePolicy 单独调参。
+
+- [ ] **15.2 扩展 cache-policies module**（分 path 精细化）：
+
+  | CachePolicy | QueryStringBehavior | items | 使用它的 behavior |
+  |---|---|---|---|
+  | `bf-home-6h` | `allExcept` | 34 tracking params | default behavior (首页) |
+  | `bf-listinfo-6h` | `allExcept` | 34 tracking params | `*.html`（顺序 10）|
+  | `bf-activity-6h` | `allExcept` | 34 tracking params | `/activity/*` + `/activity-*`（顺序 6-7）|
+  | `bf-blog-365d` | **`whitelist`** | **`page`** + `__utm_whitelisted` | `/blog` + `/blog/*`（顺序 8-9）|
+  | `bf-assets-365d` | `all` | — | `*.css / *.js / 字体 / 图片`（顺序 2-5）|
+  | `bf-static-only-path` | `none` | — | `/static/*`（顺序 1）|
+  | `bf-api-default` (api) | `allExcept` | 20+ 广告参数 | api default |
 - [ ] **15.3 test-harness 用例（8 条）**：
   ```yaml
   - id: utm-google-enters-cache-key

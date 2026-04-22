@@ -37,7 +37,10 @@
 
 | # | Akamai 特性 | 源 | CloudFront 对应 | 状态 | 归属 plan |
 |---|---|---|---|---|---|
-| B1 | TTL 矩阵（首页/列表/博客/活动/static/图片/CSS-JS/字体）| essl §7 | 6 条 ordered_cache_behavior + CachePolicy | ✅ | part2 T14 |
+| B1 | TTL 矩阵（首页/列表/博客/活动/static/图片/CSS-JS/字体）| essl §7 | **10 条 ordered_cache_behavior + 7 个 CachePolicy**（customer 2026-04-22 round-4 + 客户图 2984.png） | ✅ | part2 T14 |
+| B1-L1 | **博客 `page` 参数进 cache key**（客户图 §3.b：分页参数 page 缓存，其他参数不关心） | 客户原图 2984.png §3.b | `/blog` + `/blog/*` 专用 CachePolicy `bf-blog-365d`：`QueryStringBehavior=whitelist, items=[page, __utm_whitelisted]` | ✅ (customer 2026-04-22 round-4) | part2 T14 L1 |
+| B1-L2 | **`/blog` 和 `/blog/*` 必须拆 2 条 behavior**（glob 不匹配无尾 slash 的 `/blog` 本身）| 客户图 §3 | ordered_cache_behavior 顺序 8 = `/blog`（精确）+ 9 = `/blog/*`（子路径）| ✅ (customer 2026-04-22 round-4) | part2 T14 L2 |
+| B1-L3 | **`/activity/*` 和 `/activity-*` 必须拆 2 条 behavior**（客户有两种活动页 URL 形式）| 客户图 §4 `/activity/` 或 `/activity-xxxx` | ordered_cache_behavior 顺序 6 = `/activity/*` + 7 = `/activity-*`，绑同一 policy `bf-activity-6h` | ✅ (customer 2026-04-22 round-4) | part2 T14 L3 |
 | B2 | api 默认 NO_STORE + Sureroute&Caching 双重 NO_STORE | api §6、§7 | CloudFront api Distribution default `Managed-CachingDisabled` | ✅ | phase0 T05、part2 T14 |
 | B3 | api 扩展名分桶（CSS/JS 365d、字体 365d、图片 30d、Files 7d、Other 7d、HTML 1d）| api §6 | **需要在 api Distribution 加相同的 ordered_cache_behavior** | ✅ | part2 T14（I8） |
 | B4 | **`prefreshCache=90%` (stale-while-revalidate)** | essl §6、api §6 | CDN 自动预刷 **不做**；客户有独立预热方案覆盖 | ✅ opted-out (customer T3 2026-04-22) | part2 T14 |
@@ -132,15 +135,23 @@
 
 ---
 
-## 统计（2026-04-22 客户三轮回复后 LOCKED）
+## 统计（2026-04-22 客户四轮回复后 LOCKED）
 
-| 状态 | 初版 review | 第 1 轮 | 第 2 轮 | **第 3 轮（终版）** |
-|---|---|---|---|---|
-| ✅ Done | 38 | 50 | 57 | **58** |
-| 🟡 Gap-declared（基线迁移缺口）| 10 | 11 | 4 | **3** |
-| 🔴 Todo | 13 | 0 | 0 | **0** |
-| ➖ N/A | 5 | 5 | 5 | **5** |
-| **合计** | **66** | **66** | **66** | **66** |
+| 状态 | 初版 review | 第 1 轮 | 第 2 轮 | 第 3 轮 | **第 4 轮（终版）** |
+|---|---|---|---|---|---|
+| ✅ Done | 38 | 50 | 57 | 58 | **61** |
+| 🟡 Gap-declared（基线迁移缺口）| 10 | 11 | 4 | 3 | **3** |
+| 🔴 Todo | 13 | 0 | 0 | 0 | **0** |
+| ➖ N/A | 5 | 5 | 5 | 5 | **5** |
+| **合计** | **66** | **66** | **66** | **66** | **69** |
+
+**第 4 轮新增 3 条 ✅**（从客户原图 2984.png 挖出的遗漏）：
+- **B1-L1**：博客 `page` 参数进 cache key（whitelist 模式：`[page, __utm_whitelisted]`）
+- **B1-L2**：`/blog` 和 `/blog/*` 拆分为独立 2 条 ordered_cache_behavior
+- **B1-L3**：`/activity/*` 和 `/activity-*` 拆分为独立 2 条 ordered_cache_behavior
+
+**第 4 轮确认的架构层决定**（不新增行，但补在 Distribution 章节）：
+- **Distribution 数量 = 2**：`www + m` 共用一个，`api` 独立（不是 3 个）
 
 ## 客户 2026-04-22 第 2 轮回复确认项（9 条新 ✅）
 
