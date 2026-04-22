@@ -84,24 +84,27 @@ Cloudfront/
 
   api Distribution 的 `default_cache_behavior` 继续 `Managed-CachingDisabled`（对齐 NO_STORE）。
 
-- [ ] **14.4 修 beautyforever mock —— 含 stale-while-revalidate + stale-if-error**（coverage B4 / C3、B5 / I1）：
+- [ ] **14.4 修 beautyforever mock —— Cache-Control 双头策略**（客户 2026-04-22 T3 确认）：
+
+  **客户决策**：
+  - **stale-while-revalidate（SWR）**：**不做**。客户后续有**独立预热方案**（业务侧定时 warm-up 关键路径），不依赖 CDN 自动后台刷。spec §8.4 coverage B4 迁移缺口
+  - **stale-if-error（SIE）**：**保留 60s**。对齐 Akamai `cacheError preserveStale=true`。**SIE 无额外成本**：源站 5xx 时 CloudFront 直接返回已缓存内容，**不产生额外回源请求**（相反是省钱）
 
   ```javascript
   // example in www.js
   router.get('/', (_req, res) => {
     // s-maxage=6h 给 edge；max-age=0 给浏览器；
-    // stale-while-revalidate=10% 对齐 Akamai prefreshCache=90%（剩余 10% 开始后台预热）；
-    // stale-if-error=60 对齐 Akamai cacheError preserveStale=true（源站 5xx 时继续返回 stale）
-    res.setHeader('Cache-Control', 's-maxage=21600, stale-while-revalidate=2160, stale-if-error=60, max-age=0');
+    // stale-if-error=60 对齐 Akamai cacheError preserveStale=true（源站 5xx 时返回 stale）
+    res.setHeader('Cache-Control', 's-maxage=21600, stale-if-error=60, max-age=0');
     res.type('text/html').send(...);
   });
   router.get('/blog', (_req, res) => {
-    res.setHeader('Cache-Control', 's-maxage=31536000, stale-while-revalidate=86400, stale-if-error=60, max-age=0');
+    res.setHeader('Cache-Control', 's-maxage=31536000, stale-if-error=60, max-age=0');
     res.type('text/html').send(...);
   });
   ```
 
-  **换算策略**：`stale-while-revalidate = s-maxage × 10%`（对齐 prefreshCache=90%）；`stale-if-error = 60`（对齐 Akamai cacheError ttl=10s 略放宽）。
+  **迁移缺口登记**：Akamai `prefreshCache=90%` 的 CDN 自动预刷功能**放弃**；客户独立预热方案覆盖该职责。delivery §4.3 明示。
 
 - [ ] **14.5 Custom Error Responses（coverage B5 / I1 配套）**：`cloudfront-www` 和 `cloudfront-api` 各自加 `custom_error_response` 块，5xx 短缓存：
 
@@ -111,13 +114,14 @@ Cloudfront/
   custom_error_response { error_code = 504  error_caching_min_ttl = 10 }
   ```
 
-- [ ] **14.6 `terraform apply` + smoke**：curl 连打 2 次 `https://www.../blog`，第二次应 `X-Cache: Hit from cloudfront`。手工验证 `Cache-Control` 响应头含 `stale-while-revalidate` 和 `stale-if-error`。
-- [ ] **14.7 test-harness 用例（扩展到 13 条）**：原 10 条 MISS/HIT 矩阵 + 3 条新增：
-  - `stale-while-revalidate-present`：HEAD 响应含 `stale-while-revalidate=`
+- [ ] **14.6 `terraform apply` + smoke**：curl 连打 2 次 `https://www.../blog`，第二次应 `X-Cache: Hit from cloudfront`。手工验证 `Cache-Control` 响应头含 `stale-if-error=60`（不含 `stale-while-revalidate`）。
+- [ ] **14.7 test-harness 用例（扩展到 12 条）**：原 10 条 MISS/HIT 矩阵 + 2 条新增：
   - `stale-if-error-present`：HEAD 响应含 `stale-if-error=`
   - `api-css-cached-365d`：api.*.css 响应 `Cache-Control` 含 `max-age=31536000`
-- [ ] **14.8 hands-on md + delivery md**：TTL 矩阵对照表 + Akamai `prefreshCache→SWR` 换算表 + `cacheError→Custom Error Response` 对照 + api 扩展名分桶表。delivery §4.3 trade-off："AWS 无精确等价 prefreshCache 90%，用 `stale-while-revalidate=10%×TTL` 近似；精度差异 < 1 分钟"。
-- [ ] **14.9 commit**：`ch04: 6 cache behaviors + ttl matrix + swr + sie + api ext buckets + 13 tests`
+- [ ] **14.8 hands-on md + delivery md**：TTL 矩阵对照表 + `cacheError→stale-if-error` 对照 + api 扩展名分桶表。delivery §4.3 trade-off：
+  - "AWS 无精确等价 `prefreshCache 90%`（客户决策不迁；业务侧独立预热方案覆盖）"
+  - "`stale-if-error=60s` 对齐 `cacheError preserveStale=true`，源站 5xx 时返回 stale 缓存，**无额外成本**"
+- [ ] **14.9 commit**：`ch04: 6 cache behaviors + ttl matrix + sie (no swr) + api ext buckets + 12 tests`
 
 **验收信号**：
 - `terraform validate + plan + apply` 无错

@@ -1027,7 +1027,7 @@ Cloudfront/delivery/
 
 **同步解决 2 个 coverage-matrix Todo：**
 - **A4（C1 Host 透传修复）**：引入 phase0 级别的 CloudFront Function（viewer-request）注入 `X-Viewer-Host` header；2 个 Distribution 都绑定
-- **A7（C2 Origin Shield）**：2 个 Distribution 都启用 Origin Shield（区域 `ap-northeast-1`，与主区一致）
+- **A7（Origin Shield）**：**客户 2026-04-22 T2 决定不开**。理由：主要客户群体在北美，CloudFront 全球 Edge POP 直连能扛住。模块仍保留变量 `origin_shield_enabled`（默认 `false`），以便未来一键开启。
 
 **Files:**
 - Create: `Cloudfront/terraform/modules/cloudfront-functions/main.tf`
@@ -1130,10 +1130,15 @@ Cloudfront/delivery/
       type        = string
       description = "ARN of the phase0 viewer-request Function (X-Viewer-Host injection)"
     }
+    variable "origin_shield_enabled" {
+      type        = bool
+      default     = false  # customer T2 2026-04-22: opted out, North America audience
+      description = "Enable Origin Shield (Akamai tieredDistribution equivalent). OFF by default."
+    }
     variable "origin_shield_region" {
       type        = string
-      default     = "ap-northeast-1"
-      description = "Origin Shield region — equivalent of Akamai tieredDistribution"
+      default     = "us-east-2"  # co-located with real origin ALB for lowest fetch latency
+      description = "Origin Shield region — only used when origin_shield_enabled = true"
     }
     ```
 
@@ -1171,9 +1176,14 @@ Cloudfront/delivery/
         }
 
         # Origin Shield = Akamai tieredDistribution equivalent
-        origin_shield {
-          enabled              = true
-          origin_shield_region = var.origin_shield_region
+        # Customer T2 2026-04-22: OFF by default (North America audience,
+        # global Edge POPs can absorb load directly)
+        dynamic "origin_shield" {
+          for_each = var.origin_shield_enabled ? [1] : []
+          content {
+            enabled              = true
+            origin_shield_region = var.origin_shield_region
+          }
         }
       }
 

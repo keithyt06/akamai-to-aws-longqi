@@ -293,7 +293,13 @@ bypass test agent · Deny UA · Deny Client TLS Fingerprint 系列 · Monitor vc
   - 在 `deny` 和 `api` Web ACL 新增一条 priority=1 的 "label-propagation rule"：统一把所有 labels 转成 `X-BF-WAF-Labels` 请求头
   - mock `beautyforever/server.js` 加 middleware：读 `X-BF-WAF-Labels`，暴露到 response header `X-WAF-Rules-Triggered`
 
-  delivery §9.4 说明"POC 实现的是 label-to-header 桥接，业务侧可按此 header 做 SEO 降级；和 Akamai `PMUSER_TRIGGERED_RULES` 等价"。spec §8.3 T9 确认业务侧消费方式。
+  **客户 2026-04-22 T9 确认业务侧用法**：**日志标记 + 触发 SEO 降级**。POC 侧实现：
+  - mock `beautyforever/server.js` 的 middleware 读 `X-BF-WAF-Labels` 请求头
+  - 暴露 `X-WAF-Rules-Triggered` 响应头（给监控抓取）
+  - **SEO 降级 demo**：当 label 命中特定高风险 rule（如 `bf:asn-202425`、`bf:bad-ua`）时，mock 的 HTML 响应里追加 `<meta name="robots" content="noindex,nofollow">`，让搜索引擎不索引这个 IP/UA 的特殊响应，防止 SEO 污染
+  - test-harness 加 2 条用例：(1) 命中 rule 时响应含 `X-WAF-Rules-Triggered`；(2) 命中时 HTML 含 `<meta name="robots">`
+
+  delivery §9.4 说明"POC 完整还原 Akamai `PMUSER_TRIGGERED_RULES` + SEO 降级链路，业务侧迁移无感"。
 
 - [ ] **19.7 hands-on + delivery md**：19 条 rule 逐条对照表 + 2 条迁移缺口（TLS fingerprint、Monitor 域名）标红 + WAF Labels → `X-WAF-Rules-Triggered` 桥接说明
 - [ ] **19.8 commit**：`ch09: 19 custom rules + ASN 202425 + WAF labels bridged to X-WAF-Rules-Triggered + TLS-fingerprint gap`
@@ -352,7 +358,14 @@ bypass test agent · Deny UA · Deny Client TLS Fingerprint 系列 · Monitor vc
 
   **换算**：Akamai 的 rpm (request per minute) vs AWS 的 5-min sliding window。AWS WAF rate window 固定 5 min，所以 Akamai 15 rpm → 75 / 5-min；25 rpm → 125 / 5-min。在 delivery §10.3 解释换算。
 
-- [ ] **20.2 Slow POST**：AWS WAF 原生支持 `size_constraint_statement`，对 body 大小设上限可以 partial 模拟 Slow POST。或在 CloudFront 层配 request timeout。**标注为 partial equivalence**。
+- [ ] **20.2 Slow POST → 用 Rate-Based Rule 替代**（客户 2026-04-22 G7 确认方案）：不做 `size_constraint_statement` 的 partial 等价，改用 **7 层 DDoS 视角 + Rate Limit** 覆盖同类威胁。
+
+  理由：
+  - Slow POST 攻击（Slowloris 类）在 2026 年已基本由架构解决（CloudFront 前置 + HTTP/2 多路复用 + ALB client body timeout 兜底）
+  - 真正的高频慢 POST 会被 Rate Policy `POST Page Requests: 3/5 rpm`（Akamai 原规则，已在 5 条 Rate 里）触发
+  - 额外保险：CloudFront Origin **read timeout 30s** + ALB **idle timeout 60s** 是系统默认已有的防护
+
+  **本 task 不新增 Terraform 代码**，只在 delivery §10.3 写一段说明："Akamai Slow POST 在 CloudFront 侧通过 Rate-Based Rule（POST 3/5 rpm）+ Origin read timeout 30s + ALB idle timeout 60s 共同覆盖，相比 Akamai 原规则**语义不完全相同但威胁面覆盖等价**"。
 - [ ] **20.3 Bot Manager — 按 path 同时演示 Common + Targeted 两档**（客户 2026-04-22 G6 确认）：让客户在同一环境里直接对比两档效果，自评估生产该选哪档。
 
   **分档策略**：
@@ -503,41 +516,13 @@ bypass test agent · Deny UA · Deny Client TLS Fingerprint 系列 · Monitor vc
 
   对 rate test 需要扩展 probe.py 支持 `repeat: N` 和 `delay_ms: X` 字段。
 
-- [ ] **20.6 `breakConnection` 处理（coverage F2 / I5）**：对齐 Akamai api v10 §10 `breakConnection: enabled=true`（"Simulate failover"分支）。
+- [ ] **20.6 `breakConnection` 不迁**（客户 2026-04-22 T10 确认）：
 
-  **本 task 的动作**：
-  1. 向客户确认（spec §8.3 T10）—— 是演练残留还是生产上刻意保留？
-  2. **若保留**：AWS 无原生等价；用 AWS WAF custom rule + 条件表达式模拟（命中条件时返回特定 status code，使 CloudFront 视为 origin 故障）：
+  客户运维确认 Akamai api v10 §10 `breakConnection: enabled=true` 是演练残留，**迁移到 CloudFront 时不保留**。本 task **无 terraform 代码**，只在 delivery §10.4 明示：
 
-     ```hcl
-     rule {
-       name     = "simulate-failover-${each.key}"
-       priority = 200
-       action {
-         block {
-           custom_response {
-             response_code = 503
-             custom_response_body_key = "failover-simulation"
-           }
-         }
-       }
-       statement {
-         # TODO: fill in the Akamai breakConnection's original condition
-         # (from raw JSON's Increase availability / breakConnection criteria)
-         byte_match_statement {
-           positional_constraint = "EXACTLY"
-           search_string         = "true"
-           field_to_match { single_header { name = "x-simulate-failover" } }
-           text_transformation { priority = 0 type = "NONE" }
-         }
-       }
-       visibility_config { ... }
-     }
-     ```
+  > "Akamai 原配置有 `breakConnection` 故障注入开启；经客户确认是历史演练残留，迁移后**主动移除**，不做等价复现。"
 
-  3. **若不保留（推荐）**：在 delivery §10.4 明示 "迁移时主动删除故障注入 —— Akamai 生产上开着 `breakConnection` 大概率是演练残留"，并建议客户确认。
-
-  **默认决策**：POC 阶段不实现，delivery 明示客户确认项；客户选保留后再补。
+  **verification**：迁移后 api 域名无任何"无故 connection reset"事件（CloudWatch Monitoring 或 ALB access log 可查）。
 
 - [ ] **20.7 hands-on + delivery md**：
   - Akamai rate policy → AWS WAF rate-based rule 的换算表

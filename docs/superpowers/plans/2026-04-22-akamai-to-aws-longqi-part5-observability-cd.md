@@ -250,19 +250,19 @@ Cloudfront/
   // www.js
   router.get('/', (_req, res) => {
     res.setHeader('Surrogate-Key', 'bf-all bf-home');
-    res.setHeader('Cache-Control', 's-maxage=21600, stale-while-revalidate=2160, stale-if-error=60, max-age=0');
+    res.setHeader('Cache-Control', 's-maxage=21600, stale-if-error=60, max-age=0');
     res.type('text/html').send(...);
   });
 
   router.get('/blog', (_req, res) => {
     res.setHeader('Surrogate-Key', 'bf-blog bf-blog-list');
-    res.setHeader('Cache-Control', 's-maxage=31536000, stale-while-revalidate=86400, stale-if-error=60, max-age=0');
+    res.setHeader('Cache-Control', 's-maxage=31536000, stale-if-error=60, max-age=0');
     res.type('text/html').send(...);
   });
 
   router.get('/blog/:slug', (req, res) => {
     res.setHeader('Surrogate-Key', `bf-blog bf-blog-${req.params.slug}`);
-    res.setHeader('Cache-Control', 's-maxage=31536000, stale-while-revalidate=86400, stale-if-error=60, max-age=0');
+    res.setHeader('Cache-Control', 's-maxage=31536000, stale-if-error=60, max-age=0');
     res.type('text/html').send(...);
   });
 
@@ -279,7 +279,7 @@ Cloudfront/
   // New: Js tag mapped from Akamai essl §11 (confirmed 2026-04-22 via raw JSON)
   router.get(/\.js$/, (req, res) => {
     res.setHeader('Surrogate-Key', 'bf-www-js');
-    res.setHeader('Cache-Control', 's-maxage=31536000, stale-while-revalidate=86400, max-age=31536000');
+    res.setHeader('Cache-Control', 's-maxage=31536000, max-age=31536000');
     res.type('application/javascript').send('// bf-www-js asset');
   });
   ```

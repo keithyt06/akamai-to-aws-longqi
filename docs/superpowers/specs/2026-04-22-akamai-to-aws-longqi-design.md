@@ -415,30 +415,30 @@ test-harness/report/out/
 
 | # | 技术点 | 客户 2026-04-22 回复 | 状态 |
 |---|---|---|---|
-| T1 | **Host 透传方案**：CF Function 注入 `X-Viewer-Host`，ALB 按此 header 分流 | **接受**。客户补充：真实源 `lq-bf-nuxt-1212474737.us-east-2.elb.amazonaws.com` ALB 也是按域名分流、背后单台服务器。迁移拓扑等价 | ✅ 已确认 |
-| T2 | Origin Shield 区域选择 | **等 Keith 解释用途后决定** | 🟡 待解释 |
-| T3 | `stale-while-revalidate` / `stale-if-error` 值 | **等 Keith 解释用途后决定** | 🟡 待解释 |
+| T1 | **Host 透传方案**：CF Function 注入 `X-Viewer-Host`，ALB 按此 header 分流 | **接受**。真实源 ALB `lq-bf-nuxt-1212474737` 也按域名分流、背后单台，拓扑等价 | ✅ 已确认 |
+| T2 | Origin Shield 是否开启 | **不开**（北美客户群，CloudFront Edge 直连足够） | ✅ opted-out (2026-04-22 第 2 轮) |
+| T3 | SWR / SIE 处理 | **SWR 不做**（客户有独立预热方案）；**SIE 保留 60s**（无额外成本） | ✅ 已确认 |
 | T4 | api 扩展名分桶 TTL | **接受默认值**（CSS/JS/字体 365d、图片 30d、Files 7d；对齐 Akamai） | ✅ 已确认 |
 | T5 | `/static/*` 特殊 token `LT1RVf0XvMD1A78LUGJ2JvcSkHTKq8vb` | **保留**（按 token 值拆 cache 版本） | ✅ 已确认 |
-| T6 | "Js tag" 真相 | **发现不是 JS 注入** —— 读 raw JSON 确认 `Js tag` 节点的 behaviors 只有 `cacheTag` (值 `bf-www-js` / `bf-m-js`)；功能合并到 ch12 Tag Invalidation (Part 5 T22) | ✅ 已确认（无需客户提供 JS） |
-| T7 | `modifyOutgoingRequestHeader` 具体回源头 | **从 raw JSON 提取：`Source-Auth: akamai-lqhair`**（essl + api 同值）。POC 保留此值迁移无感；客户若需改 value 为 `cloudfront-lqhair` 需同步改源站鉴权逻辑 | ✅ 已确认 |
-| T8 | WAF Managed Rule Group 选哪些 | **全部启用**：`CommonRuleSet` + `SQLiRuleSet` + `KnownBadInputsRuleSet` + `LinuxRuleSet` + `UnixRuleSet` + `PHPRuleSet` | ✅ 已确认 |
-| T9 | AWS WAF Labels → `X-WAF-Rules-Triggered` 方案 | **等 Keith 解释 Akamai 原用法 + AWS 侧支持情况** | 🟡 待解释 |
-| T10 | `breakConnection: enabled=true`（api）保留与否 | **等 Keith 解释用途后决定** | 🟡 待解释 |
-| T11 | Adaptive Accel / SureRoute / IVM 缺口（拆分到 G2/G3/G4 分别处理） | G4 IVM **明确不需要**（API 是静态 JSON，无图像处理需求）；G2/G3 待解释 | 🟡 部分待解释 |
-| T12 | HSTS preload 是否启用 | **等 Keith 解释不可逆含义后决定** | 🟡 待解释 |
+| T6 | "Js tag" 真相 | **发现不是 JS 注入** —— 读 raw JSON 确认 `Js tag` 节点的 behaviors 只有 `cacheTag` (值 `bf-www-js` / `bf-m-js`)；合并到 ch12 Tag Invalidation | ✅ 已确认（无需客户提供 JS） |
+| T7 | `modifyOutgoingRequestHeader` 具体回源头 | **从 raw JSON 提取：`Source-Auth: akamai-lqhair`**（essl + api 同值）。POC 保留原值迁移无感 | ✅ 已确认 |
+| T8 | WAF Managed Rule Group 选哪些 | **全部启用**：CRS + SQLi + KBI + Linux + Unix + PHP | ✅ 已确认 |
+| T9 | AWS WAF Labels → `X-WAF-Rules-Triggered` 方案 | **做**。业务用途 = 日志标记 + SEO 降级；mock 命中高风险规则时注入 `<meta robots=noindex,nofollow>` demo | ✅ 已确认 (2026-04-22 第 2 轮) |
+| T10 | `breakConnection: enabled=true`（api）保留与否 | **不迁**（演练残留） | ✅ opted-out (2026-04-22 第 2 轮) |
+| T11 | Adaptive Accel / SureRoute / IVM 缺口 | 全部 **不迁**（见 G2/G3/G4） | ✅ 已确认 |
+| T12 | HSTS preload 是否启用 | **POC 不加**（对齐 Akamai 生产 v62 未启用；保留 max-age=2y + includeSubDomains） | ✅ 已确认 (2026-04-22 第 2 轮) |
 
 ### 8.4 迁移缺口接受度（G 系列）· **2026-04-22 客户已确认**
 
-| # | 缺口 | 客户回复 |
+| # | 缺口 | 客户决策 |
 |---|---|---|
-| G1 | HTTP/3 放弃（换 CICD） | **接受**：HTTP/2 够用，主要演示 CICD 持续集成发布能力 |
-| G2 | SureRoute PERFORMANCE | 🟡 等 Keith 解释后决定 |
-| G3 | Adaptive Acceleration | 🟡 等 Keith 解释后决定 |
-| G4 | Image and Video Manager | **接受缺口**：API 是静态 JSON，不涉及图像处理 |
-| G5 | TLS Fingerprint 规则 | **暂时接受缺口**（待 Keith 解释用途后客户可能改变决定） |
-| G6 | Bot Manager → Bot Control | **按 path 同时演示 `Common` 和 `Targeted` 两档**，让客户自评估选哪档 |
-| G7 | Slow POST Protection | 🟡 等 Keith 解释后决定 |
+| G1 | HTTP/3 放弃（换 CICD） | ✅ **接受**：HTTP/2 够用，演示 CICD 持续集成能力 |
+| G2 | SureRoute PERFORMANCE | ✅ **不做**：北美客户群 CloudFront 能扛住 |
+| G3 | Adaptive Acceleration | ✅ **不做**：AA 和 WAF 无关；前端可用 `<link rel="preconnect">` 补偿 |
+| G4 | Image and Video Manager | ✅ **不需要**：API 是静态 JSON |
+| G5 | TLS Fingerprint 规则 | 🟡 **POC 不加**；客户问 "WAF SDK 是否覆盖" — 答案是 Bot Control Targeted（G6 已启用）内置设备指纹机制，是 TLS 指纹的超集替代 |
+| G6 | Bot Manager → Bot Control | ✅ **按 path 同时演示 `Common` + `Targeted` 两档** |
+| G7 | Slow POST Protection | ✅ **用 Rate-Based Rule 替代**：POST 3/5 rpm + CloudFront read timeout 30s + ALB idle timeout 60s 共同覆盖 |
 
 ---
 

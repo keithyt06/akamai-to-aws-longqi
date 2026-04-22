@@ -53,7 +53,7 @@ Cloudfront/
     hsts_policy = {
       access_control_max_age_sec = 63072000  # 2 years
       include_subdomains         = true
-      preload                    = true
+      preload                    = false  # customer T12 2026-04-22: POC skips preload (irreversible)
       override                   = true
     }
   }
@@ -117,7 +117,7 @@ Cloudfront/
   }
   ```
 
-  **注意**：`preload = true` 是**不可逆变更**（把域名提交到浏览器预加载列表后，退出流程复杂）。客户确认（spec §8.3 T12）后再放行。
+  **客户 2026-04-22 T12 决定**：**POC 不加 preload**（`preload = false`）。保留 `max-age=63072000` + `includeSubDomains` 对齐 Akamai 生产 essl v62（v62 也未启用 preload；staging v63 有 preload 但未上生产）。preload 不可逆（向浏览器硬编码列表提交后 6-12 月审核移除），客户后续可按需启用。
 
 - [ ] **17.2 扩展 viewer-request Function**，把 viewer IP 规范化成两个请求头：
 
@@ -167,16 +167,16 @@ Cloudfront/
   chapter: 07-headers-hsts
   cases:
     - id: strict-transport-security-present
-      description: "HSTS 2 年 preload"
+      description: "HSTS 2 年 includeSubDomains（POC 不含 preload）"
       request: { url: "https://{host}/", method: HEAD }
       expectations:
         header_contains: { Strict-Transport-Security: "max-age=63072000" }
       hosts: ...
-    - id: hsts-includes-preload
-      description: "HSTS 含 preload 标记"
+    - id: hsts-includes-subdomains
+      description: "HSTS 含 includeSubDomains"
       request: { url: "https://{host}/", method: HEAD }
       expectations:
-        header_contains: { Strict-Transport-Security: "preload" }
+        header_contains: { Strict-Transport-Security: "includeSubDomains" }
     - id: x-powered-by-stripped
       description: "X-Powered-By 被删除"
       # 断言 headers 里不含 x-powered-by —— 需要 compare.py 支持 header_absent
@@ -257,7 +257,7 @@ Cloudfront/
 
   **重点强调**：
   - Akamai `" x-authentic-ip"`（前导空格）迁移修正为 `x-authentic-ip`（raw JSON 核对：原始已经是 `x-authentic-ip` 无空格，文档描述误判，迁移 Function 用正确名即可）
-  - HSTS preload 不可逆，客户确认后再 apply（spec §8.3 T12）
+  - HSTS：2 年 + includeSubDomains（POC **不含 preload**，对齐 Akamai 生产 v62；客户 T12 确认后续自行评估 preload）
   - `X-Powered-By` 和 `Server` 作为 response header 被删（防指纹）
   - True-Client-IP 通过 CloudFront Function 从 `CloudFront-Viewer-Address` 派生
   - `removeVary` 两侧策略差异：www/m 删、api 保留
